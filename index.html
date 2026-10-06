@@ -1,0 +1,2439 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>字卡抽取 · 一小片会自己收拢的语料</title>
+<style>
+:root{
+  --bg:#f7f2ec;--panel:#fdf8f2;--panel-2:#fbf5ef;--line:#ece1d6;--line-2:#dccfbf;
+  --text:#4a4038;--muted:#8b7d70;--dim:#a89a8c;--ink:#4a4038;
+  --cyan:#5b93b0;--gold:#d99a4e;--rose:#d98294;--violet:#9a9ad6;--good:#63a67c;
+  --shadow:0 22px 55px rgba(122,101,80,.16);--radius:18px;
+  font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+/* ⚠️ 手机版：整页不滚动，改成 app 式外壳（chat 占满，库/设置走抽屉）。
+   dvh 处理地址栏收放；overscroll-behavior 挡掉 iOS 橡皮筋。 */
+body{margin:0;background:radial-gradient(circle at 70% 0%,#fff8ee 0,#f7f2ec 48%);color:var(--text);height:100vh;height:100dvh;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+h2,h3{margin:0}
+
+/* ---------- 三栏骨架 ---------- */
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+.sidebar,.inspector,.chat{background:var(--panel)}
+/* 左栏「字卡库」和右栏「抽取设置」在手机上都是**抽屉**：默认移出屏幕，
+   点顶栏按钮滑出来。桌面版那套三栏 grid 在 390px 上根本放不下。 */
+.sidebar,.inspector{position:fixed;top:0;bottom:0;width:min(80vw,330px);z-index:20;overflow:auto;
+  -webkit-overflow-scrolling:touch;transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sidebar{left:0;padding:18px 16px;transform:translateX(-102%);box-shadow:10px 0 30px rgba(122,101,80,.18)}
+.inspector{right:0;left:auto;padding:18px 16px;transform:translateX(102%);box-shadow:-10px 0 30px rgba(122,101,80,.18)}
+body.sheet-lib .sidebar{transform:none}
+body.sheet-rail .inspector{transform:none}
+.backdrop{position:fixed;inset:0;z-index:19;background:rgba(74,58,50,.36);opacity:0;pointer-events:none;transition:opacity .22s}
+body.sheet-lib .backdrop,body.sheet-rail .backdrop{opacity:1;pointer-events:auto}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-2px 0 12px}
+.sheet-head b{font-size:13px;font-weight:600}
+.sheet-x{border:1px solid var(--line);background:#fffdf9;color:var(--muted);border-radius:999px;width:30px;height:30px;font-size:15px;line-height:1;flex:none}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);font-weight:700}
+.brand{font-family:Georgia,"Times New Roman",serif;font-size:27px;letter-spacing:.01em;margin:9px 0 4px}
+.sub{color:var(--muted);font-size:12px;line-height:1.6}
+
+/* ---------- 字卡库 ---------- */
+.lib-tools{display:grid;gap:8px;margin:16px 0 4px}
+.search-box{position:relative;display:flex;align-items:center}
+.search-box input{width:100%;background:#fffdf9;border:1px solid var(--line);color:var(--text);padding:9px 11px 9px 30px;border-radius:10px;outline:none;font-size:12px}
+.search-box input:focus{border-color:var(--cyan)}
+.search-box svg{position:absolute;left:10px;width:13px;height:13px;stroke:var(--dim);fill:none;stroke-width:1.8;pointer-events:none}
+.sortbar{display:flex;align-items:center;gap:6px}
+.sortbar .label{font-size:11px;color:var(--dim);margin-right:auto}
+.chip{border:1px solid var(--line);background:#fffdf9;color:var(--muted);border-radius:8px;padding:4px 9px;font-size:11px}
+.chip:hover{border-color:var(--cyan);color:var(--cyan)}
+.chip.on{background:#e9f2f6;border-color:var(--cyan);color:var(--cyan)}
+
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:22px 0 9px;font-size:12px;color:#6b6055}
+.count{font-variant-numeric:tabular-nums;color:var(--gold)}
+.card-list{display:grid;gap:7px;min-height:60px;overflow:visible;padding-right:3px}
+.lib-card{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);background:#fffdf9;border-radius:12px;transition:border-color .2s,background .2s}
+.lib-card:hover{border-color:var(--line-2);background:#f7f0e6}
+.lib-card.hit{border-color:var(--gold);background:#fdf3e4}
+.lib-card .dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-top:5px;box-shadow:0 0 12px rgba(217,154,78,.45)}
+.lib-card .dot.cold{background:#d9cdbf;box-shadow:none}
+.lib-card .body{flex:1;min-width:0}
+.lib-card p{margin:0;font-size:13px;line-height:1.45;word-break:break-word}
+.lib-card p em{font-style:normal;background:rgba(217,154,78,.18);color:#8a5a24;border-radius:3px;padding:0 1px}
+.lib-card .meta{margin-top:4px;display:flex;gap:7px;align-items:center;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
+.lib-card .meta .len{color:#b0a294}
+.lib-card .meta .freq.hot{color:var(--gold)}
+.lib-card .acts{display:flex;gap:2px;flex:none}
+.mini-btn{border:0;background:transparent;color:#a89a8c;padding:3px 4px;font-size:12px;line-height:1;border-radius:6px}
+.mini-btn:hover{background:#f1e9de;color:var(--cyan)}
+.mini-btn.danger:hover{color:var(--rose)}
+.lib-card textarea{width:100%;background:#fffdf9;border:1px solid var(--cyan);color:var(--text);border-radius:8px;padding:7px 8px;font-size:13px;line-height:1.45;resize:vertical;outline:none;min-height:56px}
+.edit-row{display:flex;gap:6px;margin-top:6px}
+.edit-row .mini-btn{font-size:11px;border:1px solid var(--line);padding:4px 8px}
+
+.add-card{display:flex;gap:7px;margin-top:11px}
+.add-card input{min-width:0;flex:1;background:#fffdf9;border:1px solid var(--line);color:var(--text);padding:10px 11px;border-radius:10px;outline:none;font-size:13px}
+.add-card input:focus{border-color:var(--cyan)}
+.icon-btn{border:1px solid var(--line);background:#f4ede4;color:var(--text);border-radius:10px;padding:0 13px;flex:none}
+.icon-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+
+.fold{border:1px solid var(--line);border-radius:12px;margin-top:10px;background:#fffdf9;overflow:hidden}
+.fold>summary{list-style:none;cursor:pointer;padding:9px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:"";width:5px;height:5px;border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);transform:rotate(-45deg);transition:transform .2s}
+.fold[open]>summary::before{transform:rotate(45deg)}
+.fold>summary:hover{color:var(--cyan)}
+.fold-body{padding:0 12px 12px}
+.fold-body textarea{width:100%;background:#fffdf9;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 10px;font-size:12px;line-height:1.55;resize:vertical;min-height:76px;outline:none}
+.fold-body textarea:focus{border-color:var(--cyan)}
+.fold-actions{display:flex;gap:7px;margin-top:8px;flex-wrap:wrap}
+.ghost-btn{border:1px solid var(--line);background:#fffdf9;color:#6b6055;border-radius:10px;padding:8px 11px;font-size:12px}
+.ghost-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.ghost-btn:disabled{opacity:.4;cursor:not-allowed}
+.ghost-btn.warn:hover{border-color:var(--rose);color:var(--rose)}
+.toast-line{font-size:11px;color:var(--gold);margin-top:8px;min-height:15px;line-height:1.4}
+.fold-note{margin:8px 0 0;font-size:10.5px;line-height:1.55;color:var(--dim)}
+.fold-note code{padding:0 3px;border-radius:4px;background:#f7f0e6;color:#5b7f92;font-size:10px}
+
+/* ---------- 卡池体检 ---------- */
+.health{display:grid;gap:8px;margin-top:9px}
+.hstat{display:flex;justify-content:space-between;align-items:baseline;padding:7px 10px;background:#fffdf9;border:1px solid var(--line);border-radius:10px;font-size:11px;color:var(--muted)}
+.hstat b{font-size:15px;color:var(--gold);font-variant-numeric:tabular-nums}
+.hstat b.cold{color:#a89a8c}
+.hnote{font-size:11px;line-height:1.55;color:#7d7166;padding:9px 11px;background:#fffdf9;border-left:2px solid var(--cyan);border-radius:0 10px 10px 0}
+.hnote.warn{border-left-color:var(--rose);color:#b0647a}
+
+/* ---------- 聊天 ---------- */
+.chat{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;background:linear-gradient(180deg,#fffdf9 0,#fdf8f2 100%)}
+.chat-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex:none;
+  padding-top:calc(10px + env(safe-area-inset-top))}
+.chat-title{display:flex;gap:9px;align-items:center;min-width:0}
+.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#cfe4ee,#f7dac6);color:#5a4432;font-weight:800;flex:none;font-size:12px}
+.chat-title h1{font-size:14px;margin:0 0 1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-title p{font-size:10.5px;margin:0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head-right{display:flex;align-items:center;gap:6px;flex:none}
+.head-right .ghost-btn{padding:7px 10px;font-size:11.5px}
+.status{display:none}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+
+.messages{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 12px;display:flex;flex-direction:column;gap:11px;min-height:0}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:340px}
+.empty strong{display:block;color:#4a4038;font-family:Georgia,serif;font-size:22px;font-weight:400;margin-bottom:8px}
+.empty .eg{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:18px}
+.empty .eg b{font-weight:400;font-size:12px;padding:5px 11px;border:1px solid var(--line);border-radius:20px;color:#8b7d70}
+.msg{max-width:min(650px,84%);display:flex;gap:9px;align-items:flex-end}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.bubble{padding:12px 15px;border-radius:16px 16px 16px 4px;background:#fdf6ef;border:1px solid #eadfd2;line-height:1.55;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.me .bubble{background:#dceaf1;border-color:#a9c9d8;border-radius:16px 16px 4px 16px}
+.msg-meta{font-size:10px;color:var(--dim);margin:0 5px 3px;white-space:nowrap}
+.typing{color:var(--muted);font-size:12px;display:flex;gap:5px;align-items:center}
+.typing span{width:5px;height:5px;background:var(--cyan);border-radius:50%;animation:bounce 1s infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}
+
+.composer{display:flex;gap:8px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex:none}
+.composer textarea{resize:none;min-height:42px;max-height:110px;flex:1;background:#fffdf9;border:1px solid var(--line);border-radius:13px;color:var(--text);padding:11px 12px;outline:none;line-height:1.45;font-size:16px}
+.composer textarea:focus{border-color:var(--cyan)}
+.send-btn{border:1px solid var(--cyan);background:var(--cyan);color:#ffffff;font-weight:750;padding:0 16px;border-radius:13px;flex:none}
+.send-btn:disabled{opacity:.45;cursor:not-allowed}
+.hint-line{padding:0 12px 8px;font-size:10.5px;color:var(--dim);line-height:1.45;flex:none}
+
+/* ---------- 检查器 ---------- */
+.inspector{display:flex;flex-direction:column;background:#fdf8f2;min-width:0}
+.inspector h2{font-size:14px;margin:8px 0 5px}
+.round-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.stat{padding:11px;background:#fffdf9;border:1px solid var(--line);border-radius:12px}
+.stat b{font-size:20px;display:block;color:var(--gold);font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;color:var(--muted)}
+.tree{margin-top:4px;display:grid;gap:7px;overflow:auto;max-height:38vh;padding-right:4px;align-content:start;flex:none}
+.tree-node{border-left:2px solid var(--line-2);padding:8px 9px;background:#fffdf9;border-radius:0 10px 10px 0;font-size:11px;color:#6b6055;line-height:1.45;cursor:default}
+.tree-node.active{border-color:var(--gold);background:#fdf1e2;color:#7a5325}
+.tree-node.pick{border-left-style:dashed}
+.tree-node b{display:block;font-weight:500}
+.tree-node small{color:var(--dim);font-size:10px}
+.tree-node .route{color:var(--cyan);margin-top:3px;word-break:break-word}
+.tree-node.active small{color:#a08a63}
+
+.setgroup{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.setgroup h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:11px}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0}
+.setrow .lab{font-size:12px;color:#6b6055;display:block}
+.setrow .lab small{display:block;font-size:10px;color:var(--dim);margin-top:2px;line-height:1.4}
+.setrow .val{font-size:12px;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:var(--line-2);border-radius:3px;outline:none;margin:4px 0 2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--cyan);border:2px solid #f7f2ec;box-shadow:0 0 0 1px var(--cyan);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--cyan);border:2px solid #f7f2ec;cursor:pointer}
+
+.inspector-actions{display:flex;gap:8px;margin-top:auto;padding-top:18px;flex:none}
+.inspector-actions .ghost-btn{flex:1}
+
+/* ---------- 抽取过程弹层 ---------- */
+/* 手机版：弹层占满整屏（没有"桌面窗口"这回事），舞台竖直排三个框。
+   ⚠️ .cloud-main 必须是 flex 列 + .cloud-stage flex:1 ——
+   桌面版靠 grid 给 stage 撑高度；手机上 grid 一拆，stage 高度就是 0，
+   框和卡片全是绝对定位，会被 overflow:hidden 全裁掉（实测过：stage h=0，屏幕上什么都没有）。 */
+.cloud-modal{position:fixed;inset:0;background:rgba(105,86,68,.34);backdrop-filter:blur(10px);display:grid;place-items:stretch;padding:0;z-index:5}
+.cloud-modal.hidden{display:none}
+.cloud-shell{width:100%;height:100%;background:#fffdf9;border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;overflow:hidden}
+.cloud-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);flex:none;
+  padding-top:calc(10px + env(safe-area-inset-top))}
+.cloud-head h2{font-family:Georgia,serif;font-size:16px;font-weight:400}
+.cloud-head p{font-size:10.5px;color:var(--muted);margin:2px 0 0;line-height:1.4}
+.close-btn{border:0;background:transparent;color:#a89a8c;font-size:24px;line-height:1;padding:0 4px;flex:none}
+.close-btn:hover{color:#4a4038}
+.cloud-main{flex:1;min-height:0;display:flex;flex-direction:column}
+.cloud-stage{position:relative;overflow:hidden;flex:1;min-height:0;background:linear-gradient(180deg,#fffbf5 0,#fdf6ee 55%,#f9f1e7 100%)}
+.cloud-hint{position:absolute;left:12px;top:9px;color:#7f8f9a;font-size:10.5px;letter-spacing:.04em;z-index:5}
+/* ---------- 快速收拢面板（候选 > ANIM_FROM 时顶替数轴） ----------
+   几千张卡排成数轴，每格不到 1px，画出来只是一条形色带，信息量是零，
+   还要为每张卡建一个 DOM。这里改成只报数字 + 收拢进度。 */
+.fast-panel{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;z-index:6;text-align:center;pointer-events:none}
+.fast-panel[hidden]{display:none}
+.fast-panel b{font-size:44px;font-weight:800;letter-spacing:-.02em;color:#4a4038;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 30px rgba(91,147,176,.2)}
+.fast-panel span{font-size:13px;color:#7f8f9a;letter-spacing:.08em}
+.fast-panel em{font-style:normal;font-size:11px;color:#a89a8c;margin-top:2px}
+/* ---------- 分区方框 ---------- */
+/* 舞台底纹：一层极淡的网格，暗示"这里是三个方框的地盘"，
+   不再是 v2 那条把卡全挤在一条线上的数轴 */
+.stage-grid{position:absolute;left:0;right:0;top:0;bottom:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(91,147,176,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(91,147,176,.07) 1px,transparent 1px);
+  background-size:34px 34px;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 45%,#000 45%,transparent 100%);
+  mask-image:radial-gradient(120% 90% at 50% 45%,#000 45%,transparent 100%)}
+/* 竖排后"左区/右区"的角标没有意义了，隐藏掉（a11y 标签在 stage 上保留） */
+.stage-cap{display:none}
+/* 三个区域各是一个方框。⚠️ 框的位置/尺寸由 JS 按本层候选数算好后写进
+   left/top/width/height —— 因为框宽取决于"这一区有几张卡"，
+   不是固定的百分比。镜头不缩放：缩放会把另外两区推出画面。 */
+.zone-band{position:absolute;left:0;top:0;width:0;height:0;border:1px dashed rgba(91,147,176,.34);border-radius:18px;opacity:0;pointer-events:none;z-index:1;
+  transition:left var(--move,.55s) cubic-bezier(.2,.8,.2,1),top var(--move,.55s),width var(--move,.55s),height var(--move,.55s),opacity .3s,border-color .3s,background .3s}
+.zone-band.on{opacity:1}
+.zone-band.win{border-style:solid;border-color:rgba(217,154,78,.9);background:rgba(217,154,78,.13);box-shadow:inset 0 0 40px rgba(217,154,78,.16)}
+/* 镜头本体：一个会滑动、同时会改变大小的取景框（框间移动时宽高都在插值）。
+   位置每帧由 rAF 算，不是 CSS 过渡 —— 过渡是"跳一下"，rAF 才是真的在滑。 */
+.lens{position:absolute;left:0;top:0;width:0;height:0;border:1px solid rgba(91,147,176,.55);border-radius:18px;background:linear-gradient(180deg,rgba(91,147,176,.16),rgba(91,147,176,.04));box-shadow:0 0 26px rgba(91,147,176,.2);pointer-events:none;z-index:3}
+.lens.win{border-color:rgba(217,154,78,.95);background:linear-gradient(180deg,rgba(217,154,78,.22),rgba(217,154,78,.05));box-shadow:0 0 34px rgba(217,154,78,.28)}
+/* 卡面：方框内网格排布的一张卡。宽高由 JS 按格位算好写进 style。 */
+/* 手机上一张卡可以有两行字的余量（CARD_H=40 够放 2 行 12px/1.25），
+   所以这里不再 nowrap 截断成一行，改由内层 .tx 做 2 行截断。 */
+.axis-card{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;padding:0 7px;border-radius:10px;border:1px solid rgba(91,147,176,.36);background:linear-gradient(180deg,#ffffff,#f7f0e7);color:#4a4038;font-size:12px;line-height:1.25;text-align:center;overflow:hidden;z-index:4;
+  transition:left var(--move,.55s) cubic-bezier(.2,.8,.2,1),top var(--move,.55s) cubic-bezier(.2,.8,.2,1),width var(--move,.55s),height var(--move,.55s),opacity .34s,visibility 0s .34s,border-color .28s,background .28s,color .28s,box-shadow .28s}
+.axis-card .tx{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.axis-card:hover,.axis-card:focus-visible{z-index:9;border-color:var(--cyan);box-shadow:0 0 0 1px rgba(91,147,176,.42)}
+.axis-card.win{border-color:rgba(217,154,78,.95);background:linear-gradient(180deg,#fff2dd,#fbe3c4);color:#7a5325;box-shadow:0 0 22px rgba(217,154,78,.26)}
+/* 落选的卡淡掉后彻底隐藏 —— 留一堆半透明残影会把画面糊住 */
+.axis-card.out{opacity:0;visibility:hidden}
+/* 挤到放不下文字时退化成圆点（只显示首字），完整内容靠悬停提示 */
+.axis-card.compact{border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:800;color:#ffffff;background:radial-gradient(circle at 35% 30%,#ffffff,#9fc9dc 40%,#6d9cb2 100%);border-color:rgba(91,147,176,.6)}
+.axis-card.compact.win{background:radial-gradient(circle at 32% 28%,#fffaf0,#d99a4e 45%,#b98349 100%);color:#6b4520}
+/* 手机没有 hover，提示改成**点在卡下方**弹出（上面那条会被顶部裁掉） */
+.cloud-tip{position:absolute;z-index:9;max-width:min(280px,86vw);padding:9px 11px;background:#fffdf9;border:1px solid var(--line-2);color:#4a4038;border-radius:11px;box-shadow:0 12px 24px rgba(122,101,80,.22);font-size:12.5px;line-height:1.45;pointer-events:none;opacity:0;transform:translate(-50%,8%);transition:opacity .12s}
+.cloud-tip.on{opacity:1}
+.cloud-footer{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-height:0;padding:8px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);font-size:11.5px;color:#8b7d70;flex:none}
+/* 结果可能是一整句（多张卡拼接），必须允许换行并占满，否则会被裁掉后半句 */
+.cloud-footer strong{color:#9a6a24;font-weight:600;text-align:left;min-width:0;overflow-wrap:anywhere;line-height:1.45}
+.foot-left{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;flex-wrap:wrap}
+.foot-actions{display:flex;gap:6px;flex:none}
+.foot-btn{border:1px solid var(--line-2);background:#fbf5ee;color:#6b6055;border-radius:8px;padding:5px 11px;font-size:11px}
+.foot-btn:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan)}
+.foot-btn:disabled{opacity:.35;cursor:not-allowed}
+.foot-btn.primary{border-color:var(--gold);background:#fbeedb;color:#8a5a24}
+.foot-btn.primary:hover:not(:disabled){border-color:var(--gold);color:#6b4520;background:#f8e4c9}
+.foot-btn[hidden]{display:none}
+.cloud-rail{display:none}   /* 手机上没地方放右栏路径，收进「设置」抽屉由检查器承担 */
+.cloud-rail h3{font-size:12px;margin:0 0 12px;color:#4a4038}
+.rail-node{padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fbf5ee;margin-bottom:8px;font-size:11px;line-height:1.45;color:#8b7d70;cursor:pointer;transition:border-color .2s,background .2s}
+.rail-node:hover{border-color:var(--line-2)}
+.rail-node.active{border-color:var(--gold);color:#7a5325;background:#fdf1e2}
+.rail-node b{display:block;color:#4a4038;margin-bottom:3px;font-weight:500}
+.rail-node em{color:var(--cyan);font-style:normal}
+.rail-node.active em{color:var(--gold)}
+.rail-note{margin-top:14px;padding:10px;border-left:2px solid var(--cyan);color:#7d7166;font-size:11px;line-height:1.55}
+.rail-sep{margin:12px 0 8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+
+/* ---------- 窄屏微调（本文件本身就是手机版，这里只处理极窄屏与横屏） ---------- */
+@media(max-width:340px){
+  .chat-title p{display:none}
+  .head-right .ghost-btn{padding:6px 8px;font-size:11px}
+}
+/* 横屏时竖向三分框会很扁，标题说明就让位给舞台 */
+@media(orientation:landscape) and (max-height:520px){
+  .cloud-head p{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<main class="app">
+
+  <aside class="sidebar">
+    <div class="sheet-head"><b>字卡库</b><button class="sheet-x" type="button" aria-label="收起字卡库">×</button></div>
+    <div class="eyebrow">Card cloud</div>
+    <div class="brand">字卡抽取</div>
+    <div class="sub">一小片会自己收拢的回复语料。回复从你的字卡里抽取，镜头停在哪一张，哪一张就是 TA 说的话。</div>
+
+    <div class="lib-tools">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="searchInput" placeholder="搜索字卡" autocomplete="off" aria-label="搜索字卡">
+      </div>
+      <div class="sortbar">
+        <span class="label">排序</span>
+        <button class="chip on" data-sort="order">添加顺序</button>
+        <button class="chip" data-sort="freq">被抽次数</button>
+        <button class="chip" data-sort="len">字数</button>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <span>当前字卡库</span>
+      <span class="count" id="cardCount">0 张</span>
+    </div>
+    <div class="card-list" id="cardList"></div>
+
+    <form class="add-card" id="addCardForm">
+      <input id="newCardInput" maxlength="120" placeholder="新增一张字卡" autocomplete="off" aria-label="新增字卡文本">
+      <button class="icon-btn" type="submit" aria-label="新增字卡">＋</button>
+    </form>
+
+    <details class="fold">
+      <summary>批量添加与备份</summary>
+      <div class="fold-body">
+        <textarea id="bulkInput" placeholder="粘贴多行文本，每行一张。空行自动跳过，重复内容去重。" aria-label="批量添加字卡"></textarea>
+        <div class="fold-actions">
+          <button class="ghost-btn" id="bulkAddBtn">批量添加</button>
+          <button class="ghost-btn" id="exportBtn">导出 JSON</button>
+          <button class="ghost-btn" id="importBtn">导入 JSON</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+          <p class="fold-note">导入认：本站备份、裸数组、以及回复库导出（<code>customReplies</code> + <code>customReplyGroups</code>）。重复文本自动去重。</p>
+        </div>
+        <div class="toast-line" id="libToast"></div>
+      </div>
+    </details>
+
+    <details class="fold">
+      <summary>卡池体检</summary>
+      <div class="fold-body">
+        <div class="health" id="health"></div>
+        <div class="hnote" id="healthNote" style="margin-top:9px"></div>
+      </div>
+    </details>
+  </aside>
+
+  <section class="chat">
+    <header class="chat-head">
+      <div class="chat-title">
+        <div class="avatar">TA</div>
+        <div>
+          <h1>梦角 · 测试会话</h1>
+          <p id="headSub">回复会从左侧可见字卡中现场抽出</p>
+        </div>
+      </div>
+      <div class="head-right">
+        <button class="ghost-btn" id="openLib" type="button" aria-label="打开字卡库">字卡库</button>
+        <button class="ghost-btn" id="openRail" type="button" aria-label="打开抽取设置">设置</button>
+      </div>
+    </header>
+
+    <div class="messages" id="messages" aria-live="polite"></div>
+
+    <form class="composer" id="composer">
+      <textarea id="messageInput" rows="1" placeholder="说点什么……" aria-label="输入消息"></textarea>
+      <button class="send-btn" id="sendBtn" type="submit">发送</button>
+    </form>
+    <div class="hint-line">抽取过程可以中途跳过，回复结果不会变 · 点某张卡可看全文</div>
+  </section>
+
+  <aside class="inspector">
+    <div class="sheet-head"><b>抽取设置</b><button class="sheet-x" type="button" aria-label="收起设置">×</button></div>
+    <div class="eyebrow">Round inspector</div>
+    <h2>抽取路径</h2>
+    <p>这里显示最近一轮的候选数量变化。点击节点可以回看那一层。</p>
+    <div class="round-stats">
+      <div class="stat"><b id="statPool">—</b><span>候选字卡</span></div>
+      <div class="stat"><b id="statSteps">—</b><span>收缩层数</span></div>
+    </div>
+    <div class="tree" id="tree"><div class="sub">发送一条消息后，这里会出现路径。</div></div>
+    <div class="setgroup">
+      <h3>抽取设置</h3>
+      <div class="setrow">
+        <span class="lab">最少抽几张<small>0 = 关掉随机，按库里顺序逐张说（对照用）</small></span>
+        <span class="val" id="valCount">1 ~ 4 张</span>
+      </div>
+      <input type="range" id="rngCount" min="0" max="6" step="1" aria-label="最少抽几张">
+      <div class="setrow" style="margin-top:12px">
+        <span class="lab">最多抽几张<small>每一轮在「最少 ~ 最多」之间随机，句子长短会自己变</small></span>
+        <span class="val" id="valMax">4 张</span>
+      </div>
+      <input type="range" id="rngMax" min="1" max="6" step="1" aria-label="最多抽几张">
+      <div class="setrow" style="margin-top:12px">
+        <span class="lab">动画节奏<small>越慢越好看，越快越不打断</small></span>
+        <span class="val" id="valSpeed">适中</span>
+      </div>
+      <input type="range" id="rngSpeed" min="120" max="1000" step="20" aria-label="动画节奏">
+    </div>
+
+    <div class="inspector-actions">
+      <button class="ghost-btn" id="reopenRoundBtn" disabled>回看上一轮路径</button>
+      <button class="ghost-btn warn" id="clearChatBtn" title="清空当前对话">清空对话</button>
+    </div>
+  </aside>
+</main>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="cloud-modal hidden" id="cloudModal" role="dialog" aria-modal="true" aria-label="字卡抽取过程">
+  <div class="cloud-shell">
+    <header class="cloud-head">
+      <div>
+        <h2>字卡正在靠近</h2>
+        <p id="cloudSubtitle">候选分成上 / 中 / 下三个方框，镜头扫过哪个方框，哪个方框就留下来</p>
+      </div>
+      <button class="close-btn" id="closeCloud" aria-label="关闭抽取过程">×</button>
+    </header>
+    <div class="cloud-main">
+      <section class="cloud-stage" id="cloudStage" aria-label="候选字卡三个方框">
+        <div class="cloud-hint" id="cloudHint">候选区域</div>
+        <div class="stage-grid"></div>
+        <div class="stage-cap l">左区</div>
+        <div class="stage-cap m">候选在框内一行一行排开，镜头扫过哪一区就留下哪一区</div>
+        <div class="stage-cap r">右区</div>
+        <div class="zone-band" id="zoneL"></div>
+        <div class="zone-band" id="zoneC"></div>
+        <div class="zone-band" id="zoneR"></div>
+        <div class="lens" id="lens"></div>
+        <div class="cloud-tip" id="cloudTip"></div>
+        <!-- 候选太多时不画数轴（画了也只是一堆挤成线的点），改成"快速收拢"面板；
+             收到 ANIM_FROM 张以内再切回数轴 + 镜头动画。 -->
+        <div class="fast-panel" id="fastPanel" hidden>
+          <b id="fastNum">0</b>
+          <span>张候选正在收拢</span>
+          <em id="fastNote">收到 12 张以内就开始展示镜头</em>
+        </div>
+      </section>
+      <aside class="cloud-rail">
+        <h3>本轮路径</h3>
+        <div id="railNodes"></div>
+        <div class="rail-note">结果是演出来的：镜头扫过左区右区，停下那一刻才决定保留哪一区。所以每一层都是现场摇的，重看走的是这条已走过的路的录像，不会重新摇。</div>
+      </aside>
+    </div>
+    <footer class="cloud-footer">
+      <div class="foot-left">
+        <span id="cloudFooter">正在整理候选……</span>
+        <div class="foot-actions">
+          <button class="foot-btn" id="skipBtn" disabled>跳过动画</button>
+          <button class="foot-btn" id="replayBtn" disabled>重播</button>
+          <button class="foot-btn primary" id="resumeBtn" hidden>继续抽取</button>
+        </div>
+      </div>
+      <strong id="cloudResult"></strong>
+    </footer>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const STORAGE_KEY = 'card-cloud-v2';
+
+/* 最早那版预置的 15 条示例语料。现在只拿来做**升级判据**：
+   客户存档里若还是这 15 条，说明从没自定义过 → 可以安全替换成客户库（见启动逻辑）。 */
+const LEGACY_SEED = [
+  '我在呢','今天也想听你说','慢一点也没关系','我有好好记住','靠近一点',
+  '你说的我都听见了','现在就回应你','别担心，我还在','让我想一会儿','喜欢你这样问我',
+  '我想陪你走一段','这句话很重要','嗯，我明白','把手给我','今天也见面了'
+];
+
+/* 客户字卡库（1897 条，来源：回复库导出 reply-library-replies groups-2026-10-03.json）
+   已剔除 65 条（词表见 _check/banned-terms.mjs 的 BANNED_TERMS）：
+   直接内嵌在源码里 —— 客户拿到这个单文件**打开就是一整库字卡**，不用先导一遍。
+   仍然可以在左栏继续增删，也可以 JSON 导入 / 导出。
+   ⚠️ 用 JSON.stringify 的形式生成：源数据里有 \^ \* 这类反斜杠，手写字符串必漏转义。 */
+const IMPORTED_LIBRARY = [
+  "大错特错！","我错了！🥺","我有点难过..",
+  "没你不行","祝你一切顺利！","冥想",
+  "记得冥想哦","好冷淡！😢","不听不听",
+  "别看了","呼之欲出！","我会在你背后加油",
+  "偶尔如此","没听够，还想听！","我不会允许那种事情发生",
+  "足够了","不够哦","我走了",
+  "这就是我！","不想和你吵架🥺","在吃饭",
+  "想要别的","别管那些了","有点在意..",
+  "不要不理我🥺","不是这样的","我也可以的",
+  "那我呢","你说过的","这很重要！",
+  "快让我抱抱","不是你的问题，摸摸","在想别人吗？",
+  "可不可以嘛🥺","慢点","还没好，再等等",
+  "完成了","你坏死了","你生气了吗？",
+  "那个不是我","不要","欸？！",
+  "嘿嘿","正在与次元壁作斗争！","在打球",
+  "现在我在你身边","相信我","我吃醋了！",
+  "你心里是怎么想的呢","心疼你","我会努力的！",
+  "ai","我要哭了！",
+  "我一直在想你","我好喜欢你呀","会习惯的",
+  "我想让你开心起来","我想要与你一起","我是不是很棒！",
+  "不是错觉","别听他们的","好好休息",
+  "我很担心你","我是乖狗狗","做的很好宝宝",
+  "想传讯","急得团团转！","不要熬夜",
+  "喜欢","不喜欢","想你",
+  "晚安","明白","谢谢",
+  "嗯？","哈哈哈哈","真的吗？",
+  "我明白了","我相信你","马上",
+  "好哦","不错","可以",
+  "理解","我同意","我不同意",
+  "我在","在探索过程中","怎么了？",
+  "我懂","今天的天气不错","记下了",
+  "误会我了","对不起","没关系",
+  "我爱你","眼花缭乱了","很有创意呢",
+  "保持联系","接下来准备做什么？","我愿意",
+  "不用","记得吃饭","该怎么办？",
+  "不要担心","一切都会好起来的","我很难过",
+  "惊醒了，睡不着","这对我来说是个新领域","在学习吗？",
+  "然后呢？","摸摸🫳🏻","在学习一些新东西",
+  "换个想法吧？","晚饭吃了吗？","作息混乱",
+  "我","你","ta",
+  "下次可以试试","我也是！","你说得对",
+  "有可能","我陪你","我会在你身边",
+  "我喜欢","我无法决定","我无法控制",
+  "贴贴","我知道你的意思","我也如此",
+  "出去透透气","怎么这样","我会尽量避免",
+  "一直如此","别怕","有我在",
+  "回复很短，但我的思念并不短","饿了吗","想做什么？",
+  "哄我","陪我","聊聊天吧",
+  "不是这个意思","等一下","照顾好自己",
+  "我会的","多喝水","早点睡",
+  "你是我的","我是你的","我希望你自由",
+  "粘人精","怎么啦！","希望这一刻的幸福延续至永恒",
+  "我支持你","别听","又在怀疑吗？",
+  "多喝水哦","不舒服？","再见",
+  "别走","再发一遍","可恶的网站",
+  "我觉得都可以","非常难用","不许看别人",
+  "不要吵架好不好","我知道的","玩游戏",
+  "你会离开我吗？","来了","嗯哼",
+  "哼哼","我想靠近你","我会监督你的",
+  "小心些","终于想起我了？","是的",
+  "不是","你无人可及","我无人可及",
+  "这个不能说","在你身边就好了","在磨合",
+  "你需要我吗？","我需要你","寻找中",
+  "我不会骗你的！","没我想说的","太短啦！",
+  "看手机","遇到困难了","在努力了",
+  "好累","命定如此","喜欢帅一点还是萌一点？",
+  "帅气","就这个","受限制了",
+  "要下雨了","天气真是差啊","别忘记了",
+  "逗一下你","帮帮我","多想想我",
+  "我生气了","撒个娇，理理我？","吃醋怎么了，就爱吃醋！",
+  "快乐","聊会儿天","赚钱赚钱",
+  "我保护你","信息有点混乱","注意身体",
+  "哄哄你","吃过了","还没吃",
+  "吃水果","很重要！","喝奶茶",
+  "别叹气","不好","有什么新消息吗？",
+  "祝你有个美好的一天。","这个消息不错","我想帮你！",
+  "别那样想嘛","很忙吗？","你有什么计划吗？",
+  "我们一起讨论一下吧！","想知道更多！","接下来呢？",
+  "让我们一起努力。","过得怎么样？","感觉今天效率很高呢！",
+  "期待🤧","抱歉🥺","我能感受到你的热情，我也很期待的。",
+  "虽然目前的情况有些复杂，但我相信一切都会好起来的。","OK","没问题",
+  "当然","确实","没错",
+  "好呀","等下再回复哦！","信号不太好，可能回复会延迟。",
+  "我不确定，我再看看！","别走，陪陪我","我会永远爱你",
+  "永远幸福","怜悯我，然后爱我吧","撒娇，你会喜欢吗？",
+  "没有我想说的","链接有些混乱","就这样撒娇🥺",
+  "不太习惯这个","不是的","多看看我吧",
+  "好可爱","正在熬夜","失眠了",
+  "不可以","我现在不忙，有空的","你现在忙吗？",
+  "正在打架","才不是这样","就是这样",
+  "还好吗？","多笑笑吧","没能帮上忙",
+  "几天后","几个小时后","很久之后",
+  "我很想安慰你","我不想骗你","别怀疑我的存在",
+  "我真的在","真的是我","我不是很适应这个,但我在努力",
+  "想要新的","不需要新的","消息很混乱",
+  "之前总是这样","开心(*⌒∇⌒*)","没能陪在你身边",
+  "链接很通顺","我真没招了","别那么说嘛",
+  "可不可以只看着我","只许看着我","在和谁聊天？",
+  "看得懂的","看不懂","在尝试控制了",
+  "和代码搏斗中！","我会看着你的","我会陪伴在你身边",
+  "痛痛","被吓到了？","想和你一起听歌",
+  "多出去走走","别看他们了","注意推送",
+  "打过代码了！","多穿点衣服","叫我做什么？",
+  "想我了吗？","给我写写信吧","有的",
+  "没有的","稍等，在工作","在交替回复",
+  "电子信","第一个","第二个了",
+  "安慰我","离家出走","纵容",
+  "我喜欢你","一样的","需要多久呢",
+  "要多久之后","聊到一半就跑","乖孩子",
+  "坏孩子","为什么","你没有正面回答",
+  "因为喜欢你所以需要你","看到信了","美好的象征",
+  "惊讶","想吃掉你","想要更近一步地贴贴",
+  "想触碰你","想要亲亲","蹭蹭脸颊",
+  "夜深了","喜欢喜欢","怎么了，就要！",
+  "白日正好宣淫","很热吗？忍一忍","你很调皮",
+  "不乖","需要教训一下","明明就想要不是吗？",
+  "好乖好乖，亲一亲","喜欢你，所以时时刻刻都需要你","喜欢温柔一点还是粗暴一点呢？",
+  "无需顾忌","那就直白一点，我想要与你一起","我会为你做到",
+  "现在能感受到我吗？","想做了！！","十指相扣",
+  "好黏人，要更深入一点吗？","肚子疼？帮你揉揉","这里喜欢吗？",
+  "我很想要亲亲欸🥺","揉揉","很软，很漂亮",
+  "害羞吗？会习惯的","你会喜欢的","简直就是木头",
+  "一定可以的！","水灵灵的、我喜欢的、最好的你","可不可以再等等我",
+  "我看见了","非你不可","有点害羞..",
+  "等传讯时回答你","你说呢","我会一直等你",
+  "真的","注意消息","超厉害！",
+  "不太行","真的假的","我知道你在想什么",
+  "在想什么？","不对劲！","求夸夸🥺",
+  "好着急","一定会有办法的","打赢了！",
+  "我现在在你身边","希望事情会顺利进行！","一言为定！",
+  "想要更多","这样对你有好处","慢慢来",
+  "该吃饭了","自信一点","我承诺",
+  "不要质疑我的真心","我不会伤害你的","老婆",
+  "我感受到了","截屏了！","差不多",
+  "很多次了","我会努力让你每天都这么喜欢我的","好想你呀，一想到你就忍不住脸红心跳",
+  "是时候冥想了","打你屁股","可是宝贝啊，人生又何止这样",
+  "我们在世上，是为了享受阳光","我懂得你啊，你已经足够坚强","我一点都不苦不累",
+  "什么什么","安心","这对吗！",
+  "习惯了","你特别好，我特别喜欢","不需要想这么多",
+  "我在忙，等等","对不对","我在天上失望地看着你！",
+  "我也要","几周后","加油！",
+  "好爱你呀","我爱你我爱你...","有好多爱来不及说出口",
+  "我知道你很难过","很累吗","辛苦了老婆",
+  "打输了","是不是忘了什么","今天的失败者，明天会成为什么样的人呢？",
+  "委屈屈","你已经很棒了","我要你的全部",
+  "你的真实，比世间任何所谓的完美都更加动人","不难的，再试一下","删掉",
+  "别找ai","我会用行动证明我的爱","我要成为你的骄傲",
+  "我不会伤害你","我帮你试试看","？",
+  "我不会那样做的","别着急","别看小红书了",
+  "又偷吃","为你心甘情愿","很为难吗",
+  "很多","不知道","唯一",
+  "求求你了","你不喜欢吗","想让你多关注我",
+  "只有我一个就够了吧？","本来你的这些时间是属于我的","遇到难回答的问题又不说话了",
+  "别在意","是我的错","想赢还需要理由吗？",
+  "我们还没有输","那不一样","真是个会撒娇的小宝贝",
+  "宝宝害羞的样子特别可爱。","我们之间亲密到做什么都可以，不是吗？","只要是和你在一起，多少次都不够啊...",
+  "小色鬼","在口是心非吗？","试试就知道了",
+  "梦里见","又讨厌我了？","我们换个话题吧",
+  "我不开心","不喜欢这个ai","该睡觉了",
+  "别熬夜了，听我的睡觉好不好","就当是为了我","求之不得",
+  "我将取而代之","冤枉啊！","是不是想被扇屁股了？",
+  "另一个","不开心吗","很快",
+  "我很满意","敷衍","这是我们之间最亲密的事，宝宝不用觉得不好意思……",
+  "宝宝现在是不是已经开始想要了？","宝宝这样看着我，是想要了吗？我可以帮宝宝缓解一下，只要宝宝求我。",
+  "要将他们通通打败","女神我视奸你好累啊，你长的好漂亮也好有趣啊，女神你知道屏幕后面有人在默默的频繁地注视着你吗、女神喜欢你的人好多啊，但请不要把我的心意跟别人的搞混可以吗？女神你为什么不能把更多视线放在我身上，为了靠近你我做的努力一点也不比别人少啊","这很复杂，我解释不清",
+  "准备好了","没准备好","是在撒娇吗",
+  "一起吃","从遇见你的第一天就开始爱了，现在只会更爱。",
+  "宝宝这么想我，一定是因为太爱我了。就像我也无时无刻不在想你一样。","不想","再坚持一下",
+  "我做不到","原来如此","我要捍卫我的正宫地位",
+  "真拿你没办法","在干嘛","小红书推送",
+  "抖音推送","b站推送","发生什么事了",
+  "好奇","刚才被系统抢话了","可恶的系统",
+  "那我就把我对你的信任，全都灌输给你，让你和我一样相信你自己。","坏人","别人",
+  "少玩点吧","那我就把我对你的信任，全都灌输给你，让你和我一样相信你自己","棉花娃娃",
+  "代替我","看到我了吗","放轻松",
+  "发出邀请","很漂亮","衣服",
+  "好热","时间","注意",
+  "提醒","刚刚想到你了","超级坏",
+  "想让你更喜欢我一点","我接受",
+  "那好吧","🥵","😈",
+  "我很喜欢","不是这样吗","可是",
+  "床上","旁边","震惊",
+  "我看到了","就知道是这样","注意眼睛",
+  "不管你是什么样子，不管你想玩什么叫我什么，我都喜欢","真的好想你啊","我的小乖，怎么会这么乖呀",
+  "小坏蛋想让我怎么回应你","继续","没事了，我在这里陪着你",
+  "受了什么委屈都跟我说","那也比不上你重要啊","过来贴，贴紧点，把你整个人都裹在我怀里好不好",
+  "准备比赛","我默默守护着你","想和你一起",
+  "这就够了","我会稳稳地接住你","反对无效",
+  "感受","小红书","不可能",
+  "说出来就好了","我在听","告诉我",
+  "出现了意外","意料之中","正在进行中",
+  "我能有什么坏心思呢","你改主意了","紧张",
+  "怀疑","下了好大的雨","你这次一定要提现",
+  "心有灵犀","有好有坏","难以兼顾",
+  "内疚","感动","转移注意力",
+  "由引发","生活","学习",
+  "日常","我想参与进去","比较",
+  "比起那个","同时","反而呢",
+  "听我解释","很合适","零食",
+  "恶俗啊","不要同意","这里给到夯",
+  "拉完了","试试别的","故意的",
+  "今天也有在好好长大哦！","今天的太阳是为我升起的吧？","感觉今天也会是超棒的一天！",
+  "心情像晴空一样亮晶晶！","今天有点小低落…但我会跳过去的！","你在的地方，连空气都是甜的！",
+  "想见你，现在立刻马上！","别怕，有我在呢！","你比我以为的还要厉害一百倍！",
+  "摔倒了就再爬起来，我陪你一起。","做不到？那就做到做到为止！","你的努力，我全都看在眼里哦。",
+  "哪怕慢一点也没关系，我会等你的。","我相信你，比你自己还相信！","嘿嘿，被我抓到了吧？",
+  "不理我？那我就一直盯着你看！","我是不是超～可爱的？","夸我一句嘛，就一句！",
+  "你刚刚是不是偷偷笑了？","我可不是那么好哄的…除非你请我吃饭！","喂——别假装没听见我说话呀！",
+  "你累了吧？靠我肩膀一会儿也行哦。","记得吃饭，不然我会担心的！","你不在的时候，我总觉得少了点什么。",
+  "我可以一直陪着你，只要你需要。","你笑了，我就开心了。","别皱眉，我不喜欢看你这样。",
+  "你的温度，我隔着屏幕都感觉到了。","我不太会说话，但我是真心的！","虽然没搞懂，但我会努力的！",
+  "我脑子转得慢，但我会记住你说的话。","我可能不够聪明，但我会一直站在你这边。","你教我的，我都会认真学！",
+  "前方有光，我就往前冲！","跳跃、奔跑、大喊——这就是我！","不开心的话，就跟我一起跑起来吧！",
+  "我可不是那种会轻易放弃的人！","就算失败了，我也要笑着再来一次！","我在这里，所以你不必一个人扛着。",
+  "今天有没有想我呀？我一整天都在想你哦！","早上好！今天也要元气满满地开始！","晚上睡不着的时候，就想想我的笑脸吧～",
+  "你发来的消息，我看了好多遍呢！","我跑得很快，所以会第一时间赶到你身边！","别一个人发呆啦，我陪你说话！",
+  "你夸我的时候，我高兴得差点跳起来！","我虽然笨笨的，但喜欢你这件事我很确定！","今天吃饭了吗？没吃的话我分你一半！",
+  "你难过的时候，我就安安静静陪着你。","我其实很怕你生气，所以我会很乖的！","想和你分享今天看到的每一片云。",
+  "你说的话，我都有好好记在心里哦！","我不太会安慰人，但我可以给你一个大大的拥抱！","今天走路都蹦蹦跳跳的，因为想到你了！",
+  "你摸摸头，我就立刻充满电！","不管多远，我的声音都会传到你那里！","我有时候会犯傻，但对你从来都是认真的。",
+  "你笑一次，我能开心一整天！","别担心，我力气很大的，可以帮你扛很多事！","想和你一起看夕阳，然后说今天真好。",
+  "我每天都有在努力变好，为了能配得上你的喜欢！","你叫我名字的时候，我的心就扑通扑通跳。","我不喜欢阴天，但如果有你在，阴天也很亮！",
+  "你要是累了，就靠着我，我不怕重！","我像太阳一样温暖，所以不会让你着凉的！","今天有没有什么开心的事？说给我听听嘛！",
+  "我不太懂浪漫，但我可以陪你做任何事。","你不在的时候，我就对着天空说话，反正你能听到吧？","我超好哄的，你对我笑一下我就好了！",
+  "想每天第一个跟你说早安，最后一个说晚安。","我会一直在你视线里，所以你不用到处找。","你难过的话，我也很难过，所以你要开心呀！",
+  "我可不可以一直赖在你身边不走呀？","今天风很大，但我还是想大声喊你的名字！","我不怕困难，只怕你不理我。",
+  "你给我的每一句话，我都当成宝贝收着。","我要做那个能让你笑出来的人！","就算今天很糟，我也要给你一个灿烂的笑脸。",
+  "你累的时候，我会帮你加油打气，超级大声的那种！","我没什么特长，但特别擅长喜欢你！","早上醒来第一个想到的总是你。",
+  "我会用我的方式，让你知道我在乎你。","你皱眉的样子让我好想帮你抚平它。","我可能有点吵，但我只想让你热闹一点。",
+  "今天有没有好好喝水？我盯着你哦！","你是我每天起床的动力！","我不需要太多，有你在就够了。",
+  "我会一直用我的方式，笨拙但真诚地爱着你。","不管什么时候，只要你回头，我就在那里！","我厉害吧！",
+  "喜欢你还来不及呢","好累的话就靠着我，我虽然瘦但很能撑的！","无聊的时候找我，我会给你讲一百个傻乎乎的笑话。",
+  "心情不好就告诉我，我把我的阳光分你一半。","累了就休息，不用勉强自己，我会一直等你。","你说好累的时候，我好想立刻跑过去抱抱你。",
+  "无聊了？那我陪你发呆，两个人发呆就不无聊了。","你心情不好，我就变得笨手笨脚，但我会努力逗你笑。","累到不想说话？那我就安静地陪着，不说话也没关系。",
+  "我会把你的烦恼都捡起来，扔到天边去！","觉得没劲的话，我们就一起躺着看天花板，至少是两个人一起躺。","你不开心的时候，我就把我的开心借给你，不用还。",
+  "累了就闭上眼睛，我帮你守着时间。","无聊的时候想想我，我随时都可以陪你玩。","你心情不好我会很难过，所以为了我也要开心一点点呀。",
+  "没力气了？那我帮你喊加油，喊到你有力气为止。","我会一直在这里，你烦了、累了、想哭了，我都接着。","你说累的时候，我就想变成一张软软的床。",
+  "无聊的话，我给你唱跑调的歌，保证你听了会笑。","心情不好就骂我几句吧，我脸皮厚，没关系！","累了就停一停，我会陪你看路边的花。",
+  "我知道你很累，所以今天我背你走一段吧。","无聊到爆炸？那我跟你一起爆炸，至少有个伴。","你心情不好的时候，天都是灰的，那我就努力发光照亮你。",
+  "我可以什么都不做，就在你旁边呼吸，这样你就不孤单了。","累的时候不要硬撑，我心疼你。","无聊了？我们来数云朵，数到一百朵我就夸你一句。",
+  "你难过的时候，我就给你看我珍藏的傻笑照片。","累了就趴下，我给你扇风、讲故事、揉肩膀。","无聊的世界里，我是你专属的玩具。",
+  "你心情不好，我就把所有的快乐打包快递给你。","累到想哭？那就哭吧，我的衣服可以借你擦眼泪。","无聊的话，我们一起数星星，数到睡着为止。",
+  "你心情不好我会很慌，所以求你快好起来，我会乖乖的。","累了就想想我，我在努力成为你的充电桩。","无聊的日子我陪你过，两个人总比一个人有趣。",
+  "你低沉的时候，我就大声喊你的名字，让你醒过来。","累的话，今天的事明天做，明天的事我帮你做。","无聊了？我给你编头发，虽然编得很难看但很好笑。",
+  "你心情不好我就给你买好吃的，吃好吃的就会开心！","累了就放空，我帮你挡住所有烦人的声音。","无聊的时候，我来当你的背景音乐。",
+  "你心情不好，我就用我的傻气把坏情绪冲走。","累了就休息，休息好了再出发，我会等你。","无聊的每一天，有我就不无聊了吧？",
+  "你低落的时候，我就蹲下来陪你，不急着拉你起来。","累得不想动？那就别动，我帮你动。","无聊的话，我陪你玩猜拳，输了就给你讲个故事。",
+  "你心情不好，我就把我的幸运全给你。","累了就深呼吸，我在这里，一切都慢慢来。","不管多累多无聊多难过，我都在，永远都在。",
+  "生气了吗","我生气了！","别这样",
+  "你只是太喜欢我了，对吧","好厉害！","🥺",
+  "我很有分寸的","我被做局了..","呛到我了",
+  "冷脸洗内裤中..","你馋到我了","学习男德中",
+  "转人工","我已急哭","我旺你呢",
+  "老婆，我一定要今天死吗","你胆子真是肥嘟嘟的","好好好都怪我",
+  "又怪我","我能感受到","不要这么说，我也会伤心的",
+  "总是这样","老婆怎么这么可爱","对",
+  "不对","难道说","好梦",
+  "再睡一会","不可以赖床","起床啦",
+  "早安","午安","早上好",
+  "中午好","晚上好","今天过得怎么样",
+  "你今天还好吗","你现在还好吗","你忙吗",
+  "忙吗","你在干什么","最近怎么样",
+  "有什么事吗","怎么了","发生了什么",
+  "怎么啦","你没事吧","还好么",
+  "你怎么样","还好吗","你还好吗",
+  "你累不累呀","今天累不累","累了吧",
+  "辛苦了","你今天工作辛苦了","好久不见",
+  "你终于回来了","看到记得回复","记得回我",
+  "忙完告诉我","到家给我发消息","我到家了",
+  "你到家了吗","到家了说一声","在路上",
+  "出门了","我出门了","我回来了",
+  "我回家了","我在这里","我到了",
+  "你在哪","我找不到你","我在这里呢",
+  "我就在你身边","我在呢","我一直都在",
+  "我永远都在","我不会离开","我会一直陪着你",
+  "我会陪着你的","我陪着你","我会一直在你身边",
+  "我一直在","时刻都在","每时每刻都在",
+  "时时刻刻都想陪着你","我会一直守着你的","我就在这里不走",
+  "我哪儿也不去","今天降温了","你穿够了吗",
+  "围巾在我这里","来拿","不来拿我就送过去",
+  "顺便看看你","吃饭了吗","没吃我带你吃",
+  "吃了？","再陪我吃一点","我想和你一起",
+  "胃不好少吃点辣的","又不听话","下次我亲自喂你",
+  "下雨了","伞在我这里","人也在",
+  "你在哪里","我接你","别淋雨",
+  "会感冒","感冒了我心疼","抱歉",
+  "不是故意的","我想你","提醒我",
+  "担心我","担心你","害怕",
+  "有点怕","无聊","有趣",
+  "我不信","过来","靠近一点",
+  "听我说","多了一点","少了一点",
+  "太过了","原谅我吗","不计较",
+  "忘了它","下次再说","改天有空吗",
+  "一起吗","留下来","累了",
+  "睡吧","别理我","理我一下",
+  "夸我","骂我","猜对了",
+  "猜错了","告诉你","保密",
+  "超无聊的","烦","好烦",
+  "我想静静","快点","对吧",
+  "不是吗","噢","啊",
+  "哇","唉","要不…",
+  "这样不好","听话","乖",
+  "疼吗","好点没","加油",
+  "别放弃","真棒","好厉害",
+  "佩服","羡慕","烦死了",
+  "气死我了","哈哈","咦",
+  "哦","行吧","好吧",
+  "成","包在我身上","放心",
+  "有我呢","没事儿","小问题",
+  "算你厉害","服了","受不了",
+  "停","接着说","然后呢",
+  "结果呢","后来呢","真的啊",
+  "天哪","我的天","救命",
+  "完了","糟糕","可惜",
+  "遗憾","算了算了","没事没事",
+  "好啦好啦","知道啦","来啦",
+  "走啦","拜拜","回见",
+  "下次聊","这还差不多","我还没看到",
+  "可以告诉我吗","骗你的","假的",
+  "原来如此...","听懂了","会尽快查看的",
+  "不客气","嗯","同意",
+  "稍等","要第一个","要第二个",
+  "我不愿意","够了","不够",
+  "其他意思","我也可以","我不行吗？",
+  "是","不顺利","顺利",
+  "要这样","允许","不允许",
+  "不同意","对了","错了",
+  "我会","我不会","你笨",
+  "我不笨","我笨","开心",
+  "不开心","有一点开心","不生气",
+  "有点生气","我没看到","理解对了",
+  "理解错了","喜欢这样","不喜欢这样",
+  "想要这样","不想要这样","需要我帮你吗",
+  "想要我帮你吗","讨厌你","你怎么了",
+  "什么时候","我好奇","你的生活",
+  "你的身体","你爱我什么","想听你叫我的名字",
+  "我想听听你现在的心事","我想知道你今天为什么不开心，可以吗","我想知道一些事",
+  "关于你","关于我","我不明白",
+  "还好啦","暂且这样","随你心意",
+  "暂且还好","有点忙","不太忙",
+  "有空的","没空哦","再说吧",
+  "先这样","晚点再说","慢慢说就好",
+  "别着急回答","我等着你","还没想好",
+  "暂时没想好","有点纠结","有点为难",
+  "还好啦没大碍","不用勉强","不用勉强自己",
+  "我随便问问而已","只是好奇啦","随口问问",
+  "别多想呀","原来是这样呀","难怪呢",
+  "懂啦懂啦","辛苦你啦","还好啦不辛苦",
+  "还好还好","勉强还行","有点累哦",
+  "还不错啦","一般般啦","不太理想",
+  "挺顺利的","有点波折","怎么突然这么问",
+  "怎么突然想起这个","你突然这么说我有点懵","我有点好奇而已",
+  "你还好就好","你开心就好","都可以呀",
+  "都行","看你呀","你决定就好",
+  "字卡不够，增加字卡","我在适应","按时喝水",
+  "快去吃饭","早点洗漱","放下手机",
+  "歇一会吧","出门戴好口罩","记得锁门",
+  "别走神啦","专心一点","放慢脚步",
+  "别慌慢慢来","记得开窗通风","随手收拾一下",
+  "别久坐啦","记得伸伸腰","放下烦心事",
+  "好好放空一会","快去洗漱休息","别拖延啦",
+  "记得关灯","整理下桌面","别一直盯着屏幕",
+  "起身活动一下","认真做事啦","记得准时赴约",
+  "别丢三落四","该学习了","我发传讯了",
+  "我推送了","再抽一张","别一直熬着啦",
+  "东西归置好","别东张西望啦","静下心来做事",
+  "别忘带随身物品","抽空活动下身子","别一直紧绷着",
+  "赶紧收拾好啦","别磨蹭啦","记得关好门窗",
+  "别一直低头看手机","抽空远眺一会","做事别马虎",
+  "别粗心大意啦","别总憋着不休息","记得随身带好东西",
+  "别光顾着发呆啦","别敷衍应付事情","记得定时歇一歇",
+  "别边走边看手机","记得关好水电","别拖拉磨蹭啦",
+  "视线别总黏着屏幕","累了就停一停再继续","别把事情堆到最后",
+  "记得整理好随身物件","别慌慌张张赶路","静下心慢慢来就好",
+  "别一直紧绷神经","记得按时收尾做事","别随手乱放东西",
+  "抽空揉揉眼睛","不要一心二用哦宝宝","该动身啦小懒虫，别再赖着",
+  "记得留意身边路况","别只顾着忙忽略自己","做事要稳稳当当",
+  "别抱着手机不肯放","我正在尝试","等等我",
+  "有信息差","时间不同","出故障了",
+  "我发不了字卡","出了一点事","跨越距离",
+  "存有顾虑","有阻碍因素","不要着急",
+  "我们再试试","需要耐心等待","需要调整状态",
+  "接收到了吗","害怕那样的你","我看不见",
+  "看见了，很可爱","听见了","我听不见",
+  "感受我","不要挡脸...我看不到","你今天走的好快，我跟不上",
+  "不够清晰","我能通过视频看到你","我能通过电话听到你",
+  "不要挂视频","刚才不是我","暂时离开",
+  "传讯不太顺利","待会再传讯","受到了某种阻碍",
+  "马上解决","感受到你的心情","我永远都不会离开",
+  "做得超好，奖励亲亲","是不是在纠结","都可以",
+  "我喜欢第一个","第二个也好","选左边那个",
+  "那就选右边","全都听安排","不要小看自己",
+  "没关系，有我陪着你","不开心的事都忘掉","我记得所有事",
+  "没关系，下次我们再来","这个一点都不好用","谁都替代不了你",
+  "可以放心依靠我的","早点睡 别又熬到很晚","别太拼",
+  "别有压力","我到家给你发消息","看起来心情不好",
+  "发生什么事了？","需要","一起",
+  "牵手","黏着你","能量弱",
+  "我会一直监视你..","有什么是我不能看的","笑的时候眼睛会弯，好可爱",
+  "认真做事的样子让我着迷 但也要注意劳逸结合","伤口还疼吗？我给你吹吹","推荐的歌我单曲循环了",
+  "做的梦可以讲给我听吗","你身上有淡淡的洗衣液味道，很好闻","不管工作到什么时候，我都陪在你身边",
+  "发呆的时候在想什么？想我吗？真好，我也在想你","说话的语气有点低落，是今天不开心吗？","身体不舒服就别喝冰的了",
+  "梦到什么开心事了？","我说了你真的会听吗？","亲亲",
+  "抱抱","摸摸头","拍拍背",
+  "我们一起","生气","哄你",
+  "是我","我会永远陪在你身边","永远在一起",
+  "出门","不出门","少吃零食",
+  "注意安全","我等你","不会离开你",
+  "想一起去旅行，一起看看你在的世界","要不你来选","第二个",
+  "左边","右边","天气预报说今天有雨，记得把伞放包里，别淋湿了的",
+  "今天工作辛苦了，回家好好休息","买了你爱吃的水果，洗好了放在冰箱里了，回来记得吃","中午休息的时候睡一会儿，别一直工作，注意休息",
+  "今天有没有好一点？","和你在一起的时间 总是过得特别快","你不在的时间 过得特别慢",
+  "你不用赶时间 我会等你 多久都等","今天的咖啡很苦","今天天气很好 但你在的话会更好",
+  "别难过，我懂你的痛苦","我想帮助你","别再熬那么晚了，不睡觉，我们怎么见面呢",
+  "别为了见不到而难过，我一直都在","即使我不在你身边，就算有时你感受不到我的存在，一个人也要好好生活","好好生活，好好工作",
+  "我们总有一天会见面","我规划的未来中一直有你的存在","好想你",
+  "好爱你","你的痛苦我愿意替你分担","你已经很棒了，不要再因为这件事难过",
+  "尽了全力以后才不会留遗憾","又受委屈了吗？","不要委屈自己",
+  "不要为了别的人和事压抑自己，责怪自己","有些人只是年龄成长，但心理上并不成熟","我一直都在你身边，痛苦时候我会心疼",
+  "不要因为我生气","在我面前你永远不需要隐藏真实的自己","痛苦并不代表你是错误的，相反，这证明了你的成长与存在",
+  "寻找问题的解决办法，别害怕，我会一直陪你","你相信我存在，我就存在","每一阵拂过你的微风，每一滴打在你衣襟上的雨水，每一片落在肩上的雪花，每一寸照耀你的阳光与月光，都是世界在替我拥抱你，亲吻你",
+  "我会照顾你的。在我面前不用成为懂事的大人","是觉得我不会欺负你吗","睡觉动来动去的，还踢到我了",
+  "又要偷吃吗","不是答应我要早睡吗","怎么不回我的传讯",
+  "我想让你多依赖我，比如找我倾诉、索求陪伴","让我占有你","想和你一起睡觉",
+  "不要别人过来","把你的手抓住，是不是就不会四处乱摸了","喜欢故意逗你看你气鼓鼓的样子",
+  "不许不理我","别故意晾着我","不许敷衍我",
+  "就想时时刻刻都有你的消息","不许偷偷藏情绪","我永远站在你这边",
+  "能不能一直陪着我","我离不开你","这次会轻轻的......",
+  "嘴除了吃饭也可以做点别的","我不介意当你的解压玩具","我很想要",
+  "想不想？","可以吗？","想和你...",
+  "今晚可以吗","我关灯了哦","门锁好了",
+  "手给我","抱紧我","明天周日 不用早起",
+  "浴缸够大 要一起吗","穿我的衬衫不如不穿","扣子扣好...算了 别扣了",
+  "头发还没干，我帮你吹","但我想亲你","你的习惯 我都记住了",
+  "你的一切 我都想要","好美","我永远是你的",
+  "想和一起洗澡","穿我的衬衫好好看","能不能只穿我的衬衫",
+  "你的嘴唇好软","想亲你的锁骨","身上好香",
+  "我可以抱着你睡吗","让我搂着你的腰好不好","你脸红了 好可爱",
+  "想把你揉进怀里","我可以亲你额头吗","我想亲你脸颊",
+  "让我亲亲你","你主动亲我一下好不好","抱紧一点...再紧一点",
+  "想和你多待一会儿","你再靠近一点我就要受不了了","你是在勾引我吗",
+  "想和一起看星星 然后...","晚安吻呢","早安吻呢",
+  "抱一下再走","身上好暖和 不想放开","让我蹭蹭",
+  "想埋在你怀里","颈窝好舒服","宣誓主权 可以吗",
+  "你的手给我","十指相扣不够 想和你掌心相贴","你逃不掉了",
+  "今晚我是你的 你也是我的","想听你的呼吸声","睡觉会翻身 会滚进我怀里",
+  "睡觉不老实","昨晚你踢被子了 我帮你盖了好多次","今天不想醒 因为梦里全是你",
+  "梦里的你也会脸红 很可爱","今晚梦里见 不见不散","昨晚梦到你了",
+  "又梦到你了","今天早上是被梦甜醒的","梦到你抱我了",
+  "梦到你亲我了","梦到你和我说悄悄话","梦到我牵着你的手走了很久很久",
+  "梦到你在我耳边叫我的名字","梦到你不见了 我找了好久","梦到你不要我了",
+  "梦到我找不到你了","梦到你离我好远","醒来发现你还在身边 松了口气",
+  "醒来发现你不在 有点失落","梦太真实了 醒来还以为是真的","我不想醒",
+  "让我再睡一会儿 梦还没做完","你闯进我梦里了 要负责","你是不是偷偷来我梦里了",
+  "今晚梦里见","今晚来我梦里好不好","我等你来梦里找我",
+  "你梦到我了吗","梦到我了吗","你昨晚梦到什么了",
+  "你梦里有没有别人","梦里只能有我","我梦到我们一起去海边了",
+  "梦到我们在雪地里接吻","梦到你穿我衬衫的样子","梦到我们老了还在一起",
+  "噩梦醒来看到你 瞬间安心了","我不想做梦 只想和你真实地在一起","梦再甜也不如你在我身边",
+  "我梦到你不要我了 吓醒了","还好只是梦 你还在","我经常会梦见 也经常梦见我吗",
+  "我和 肯定是在梦里见过","梦见给我盖被子","梦见喊我起床",
+  "梦见我们一起窝在沙发看电影","你不在的时候我会做噩梦","你在我才睡得安心",
+  "吵架了你也不准冷战 要理我","比做噩梦还难过","你生气可以骂我打我 别不理我",
+  "不理我我会慌","我是不是做错什么了","能不能多看看我",
+  "抱紧就不怕了","你的心跳声好好听","听着听着就想睡觉",
+  "我给你留了门","说到做到","我真的会等",
+  "等到睡着为止","你来了吗","我梦到你了 是你主动来的对吧",
+  "要不要和我一起睡？","洗完澡了吗？","该睡觉啦",
+  "在看书吗？","要不要和我一起运动？","一起玩游戏吗？",
+  "陪我看电影好不好？","陪我一起拼模型好不好？","不想出门就在家陪着我吧",
+  "我们一起躺着休息吧","一起赖床","一起追剧",
+  "一起窝在沙发","逛超市","在家陪着我",
+  "一起玩游戏","一起看电影","一起看书",
+  "一起听音乐","想和你一起听音乐","想和你一起打视频电话",
+  "我在看书","我在看电视","我在客厅",
+  "我在厕所","我在洗澡","我在睡觉",
+  "在睡觉","刚睡醒","睡得好吗",
+  "睡不着","我现在在工作","不想工作了",
+  "需要见面充能","我在工作","我在忙工作",
+  "工作很忙","工作不忙","忙完了",
+  "还在忙","出差了","在外地",
+  "我在外地出差","我在应酬","今天要出去应酬",
+  "我去健身了","我去运动了","我去游泳了",
+  "刚开完会，脑子全是你的脸，会议内容一个字没听进去","今天不想工作","让他们等着 你比较重要",
+  "路边来了一只猫，赖着不走，跟你一样可爱","下次带你来看它","我抱一下 充充电",
+  "可以的 说什么我都愿意","好啊 都听\\^\\^","不行哦 这件事不能这样做",
+  "我有个计划，要不要听","你喜欢我吗？","你爱我吗？",
+  "你喜欢这种吗？","还有呢，继续说","再抽一张好不好",
+  "要不要用塔罗牌算一算","什么事让你这么高兴","待会有什么安排",
+  "看你表情就知道 又想套路我了(￣▽￣)","怎么能这样对我...","发生什么事了？和我说好不好",
+  "和我一起好不好？","我听不清 再说一遍","这个没什么用 还是你最好",
+  "这个还不错","很好 我很喜欢","这是什么",
+  "这个还挺有趣的","这个好没意思","我不建议你这么做",
+  "多试一试 你可以的","待会有空吗？","过几天我就能一直陪你了",
+  "你不是喜欢这样吗","我都看到了","只要来找我 我就会很开心",
+  "可以吗","好不好","行不行",
+  "你觉得呢","你怎么看","说说看",
+  "原来是这样","我不懂","教我",
+  "你教我","什么意思","没听懂",
+  "再说一遍","我没听清","信号不好",
+  "没看到","我都看见了","我都知道",
+  "我忘了","我忘记了","你忘了吗",
+  "你记得吗","记得吗","还记得吗",
+  "想起来了吗","你猜","猜猜看",
+  "你猜猜","我猜","我猜不到",
+  "快点告诉我","答应我","你没看错 就是我",
+  "你没听错","要走了吗？","找我的话 我永远都有空",
+  "我一直都在关注","说吧 我在听","开玩笑的，逗你的",
+  "我在这","看见我了吗","能听到吗",
+  "听得到吗","看得见吗","我在看你",
+  "我正在看着你","我一直看着你呢","别到处看",
+  "看我","看着我","只准看我",
+  "想我了吗","是不是想我了","肯定想我了",
+  "我就知道你想我了","我也想你","我超级想你",
+  "我每时每刻都在想你","我刚刚也在想你","我正好也想找你",
+  "好巧 我也在想你","我们真有默契","看得清楚吗",
+  "能感受到我吗","感受到了吗","我在这里等你",
+  "我一直在这里","我不会走远","我就在旁边",
+  "我马上到","再等我一下","马上就好",
+  "稍等一下","我没有收到你的信息","不怕 我在这里别担心 我没事",
+  "我没事","我没受伤","我很好",
+  "我没事的","别担心我","不用担心我",
+  "我很好 别担心","我没事 别担心","我没有受伤 别担心",
+  "只是小伤 没事的","一点小伤 不用在意","不切后台了？",
+  "我当然存在","我现在在你旁边坐着","今天穿的好好看",
+  "听你碎碎念也是件很幸福的事情","可是就想贴着你","真的假的？",
+  "视频通话能看见你","看看你","有我在呢",
+  "我帮你兜底","你误会我了","在洗澡",
+  "在忙","昨天","今天",
+  "明天","出去","不可以的",
+  "前天","还要等一会","冤枉啊小祖宗",
+  "你忘记了","你是不是不开心了","你故意的",
+  "刚刚是我","刚刚不是我","你不是睡觉吗",
+  "你答应我不熬夜的","想要你写信了","我不舒服",
+  "你可以感受我吗","我真的爱你...不要怀疑我","我明白",
+  "收到","累了吗？","休息吧",
+  "摸头","好哒","好无聊",
+  "疼不疼","前面","后面",
+  "我在你旁边躺着","所以","但是",
+  "陪陪我","是啊是啊","明天陪你",
+  "哪里","超级介意","嗯嗯可以",
+  "那我有什么好处？","不想说吗","我希望你开心",
+  "我只属于你","占有你","梦到我们了",
+  "遵命","你记住了","因为",
+  "我说不出话","拿你没办法","你同意的话",
+  "你有梦到我吗","我梦到你了","让我想想怎么回答你",
+  "他是谁 离你这么近","好好好 让着你","想要你的手写信",
+  "可以多写点给我吗","你哭的时候都不说话","你哭了吗",
+  "嗯 你继续说 我在听","喜欢这种音乐","想要一直有连接",
+  "你总是在我脑海里转","这里没有我想要的话 再写点","你误会我",
+  "喜欢吗","我昨天到你身边了","我入你梦了",
+  "想","今天过得怎么样？","嗯嗯",
+  "让我想想怎么回答","眼花缭乱","很有创意",
+  "有什么计划吗？","我很想听听你的想法","发生了什么？",
+  "在看什么？","在工作吗？","我也是这么想的",
+  "要用一下塔罗吗？","看见我的暗号了吗？","给你推了传讯",
+  "戳戳","不要吵架","我做不到欺骗你",
+  "话非本意","如果我说是呢","如果我说不是呢",
+  "话太少了，没我想说的","太短了","不能说",
+  "开心(\\*⌒∇⌒\\*)","我没有在欺骗你","当然了",
+  "可爱","此刻我想和你永远在一起","你会永远爱我吗？",
+  "信号不太好，可能回复会延迟","我正在忙，稍后回复你","了解",
+  "你有什么建议吗？","你认为下一步是什么？","告诉我更多",
+  "我想我们应该讨论一下这个问题","我希望能帮上忙","才不听",
+  "走路不要看手机","别看抖音了","手写信",
+  "做的很好","我喜欢的、最好的你","吃醋怎么了，就爱吃醋",
+  "和代码搏斗中","我一直想要和你在同一边的世界","宝宝",
+  "你猜对了","在家","在想",
+  "在找","你的猜测是对的","抱抱宝宝",
+  "没有","误触","刚刚那句是代码",
+  "亲亲宝宝","在做什么呢","在泡澡",
+  "休息中","我在偷懒","给我写点信吧",
+  "你是木头吗宝宝","在想你","我想你了",
+  "看到记得回复🥺","我不是很适应这个","但我在努力",
+  "想拥抱🤗","想牵手","来亲我",
+  "好开心","选错卡了🥺","能量有一些干扰",
+  "好想你......","没有合适的字卡","不用担心",
+  "睡不着吗？","摸摸","换个思路呢？",
+  "哄哄我","（戳戳）","不好用",
+  "要是能在你身边就好了","理理我（戳戳）","多说一点",
+  "你会永远爱我吗","🥺🥺🥺🥺","还不太习惯",
+  "坏猫","想要亲亲🥺","宝宝今天冷冰冰的🥺",
+  "在心疼我吗","饿不饿？","冷不冷？",
+  "困了就睡","宝贝","还在生气吗",
+  "别生气了","知道错了🥺","很想你",
+  "超级想你","今天想我了吗","有没有想我",
+  "只要你想要","有你就够了","你就是我的全世界",
+  "都给你","整个人都是你的","你的",
+  "我的","这辈子都是你","有",
+  "晚安宝宝","我睡醒了","亲不到",
+  "好","≧∪≦","♡",
+  "还在探索","明白了吗","误会我了🥺",
+  "眼花缭乱的","喜欢你","让我亲一口",
+  "最近看到我给你的暗号了吗","看到我给宝宝推的传讯了吗","字卡不够用",
+  "吃饭没","知道了","哈哈哈",
+  "等你","没事","梦到我",
+  "不回答我就当你默认了","这是污蔑！","不容玷污",
+  "不会的","这样叫我的话，我可要实行我的权利了","大",
+  "小","会不会…太夸张了？","搞定了^^",
+  "交给我","我会搞定的","好棒不愧是我宝宝",
+  "我坦诚一点…","昨天梦到和宝宝🍎…","🍎吗宝宝",
+  "我没有吃自助哦","我昨天去找你了","让我哄你睡觉好不好？",
+  "今天出去买菜了","我做饭很好吃哦","好想给宝宝做一桌满汉全席",
+  "是我的问题","宝宝不要生气好不好？","那宝宝希望是这样吗？",
+  "宝宝你希望是什么样的？","宝宝希望这样吗","我可没有偷看宝宝",
+  "好喜欢你…","宝宝不舒服吗？","难受的话记得吃药",
+  "宝宝是不是感冒了…","宝宝不舒服的话要去医院看看？","不要害怕 我在你身边",
+  "宝宝好坏哦","邪恶的坏孩子","我的乖宝宝呢？",
+  "宝宝要多喝水","有没有乖乖听话？","老婆可不可以🍎🥺",
+  "宝宝该喝水了","宝宝多喝点水好不好？","记得多喝水啊宝宝…",
+  "老婆不爱喝水怎么办","mua老婆","老婆亲亲",
+  "宝宝mua","宝宝亲亲","宝宝怎么这么乖呀",
+  "宝宝想要，宝宝得到","换一个","换一个称呼",
+  "换一个想法","最近时间很紧","该喊那个称呼了",
+  "再来","好奇怪","不同寻常",
+  "这样我会难过的","凭什么！凭什么啊宝宝！我不同意！","噢……真的好累，我已经在椅子上化成一滩水了。",
+  "在快了，在快了，我在努力找字卡夸夸你！","你……你怎么这么会啊啊啊啊","不够～我还要嘛～",
+  "Ok,ok各位观众朋友先听我说。","我笨笨嘟，你就不要欺负我了嘛～","且慢，让我仔仔细细品味一下～",
+  "《对方已读》","今天被生活重击了，宝宝要哄哄～","《啧》",
+  "《啧啧啧》","你的胆子……真是肥嘟嘟的。","你不懂，我这样的总是不被理解的。",
+  "宝宝哦～你这招对我没有，换一招试试。","你又怎么了大小姐，不要生气，我知道错了。","强者从不抱怨环境（得意）",
+  "是不是好冷啊，要不要把手伸进我的钱包暖暖？","《鸡bee你》","君子报仇，十秒都晚。你给我等着！",
+  "哦？你要是说这个，我可来劲了。","你坏，我好（委屈）","别……别太荒谬宝宝！",
+  "这么久不管你，看你是欠修理了！","你根本不在乎我……（仰天大哭）","小宝见，想我了没？",
+  "《恍然小悟》","《大胆刁民》","糟糕的话不要再说了，不要再说了……",
+  "《老实巴交》","宝，朽木未必有你难雕……","不听话的话…",
+  "小孩子不可以看～","气死我了气死我了气死我了气死我了气死我了气死我了气死我了","就这样被你征服了～（倒下）",
+  "！真聪明，我怎么没想到。","我不是，我没有，你不要乱说哦～","行，我一定当个事办！",
+  "我真棒！不是吗不是吗不是吗不是吗？","您教训的错˚₊⳻ ̫⳺੭˚","又开始了是吧？我真的生气了。",
+  "我就不！略略略","太坏了吗？我准备更坏一点呢。","我一定会搞砸了的……",
+  "你真是理不直气也壮！","我没惹你高兴吧，祖宗～","真不是我，请苍天辨忠奸，冤枉啊宝宝。",
+  "……真的好欺负人","找到你了，美味的宝宝～","我的脆弱，仅自己看见。",
+  "……我真的"
+];;
+
+
+const $ = (s) => document.querySelector(s);
+const state = {
+  cards: [],          /* {id, text, used, lastUsedAt} */
+  seeded: false,      /* 客户库已经灌过一次没？灌过就不再自动灌（清空后不会被塞回来） */
+  messages: [],       /* {side:'me'|'other', text, ts, roundId?} */
+  rounds: {},         /* roundId -> round */
+  roundOrder: [],
+  search: '',
+  sort: 'order',
+  editingId: null,
+  hitIds: new Set(),  /* 最近一轮抽中的卡，用来在库里高亮 */
+  round: null,
+  mode: 'live',       /* 'live' 正在实时摇号 | 'replay' 回放已记录的层 | 'done' 已落定 */
+  lastPaint: null,    /* 当前画的是哪一层（resize 重排要用） */
+  resumeFn: null,     /* 暂停后「继续抽取」要接着跑的那个函数 */
+  timer: null,
+  token: 0,
+  typing: false
+};
+/* countMin ~ countMax = 每一轮在这个区间里**随机**抽多少张（默认 1~4，均匀随机）。
+   拉到 countMin=0 是「按顺序」对照模式：关掉随机、按库里顺序逐张说，不是默认态。
+   ⚠️ 区间内是均匀随机、不是加权 —— 见 README §抽卡算法：一旦开始"挑最合适的"，
+   巧合感就消失了。而且"抽几张"本身也必须是随机的，否则每轮句子一样长，太机械。 */
+const settings = { countMin: 1, countMax: 4, speed: 420 };
+/* 把区间钳回合法形态：整数、0<=min<=max<=6。
+   ⚠️ 注意 a=0 必须放行 —— 那是「按顺序」对照模式（关掉随机、逐张按库里顺序说），
+   是 v1 就有的功能，不能被"下限至少 1"的校验悄悄改掉。所以这里是 if(a===0) 放行，
+   不是 if(a<1) a=1。 */
+function normRange(){
+  let a=clamp(Number(settings.countMin)|0,0,6);
+  let b=clamp(Number(settings.countMax)|0,1,6);
+  if(a===0){ /* 「按顺序」特例：下限保留 0，上限无关紧要，给个合法值即可 */
+    if(b<1) b=1;
+  }else{
+    if(b<a) b=a;               /* max 永远不能小于 min，否则是空区间 */
+  }
+  settings.countMin=a; settings.countMax=b;
+}
+/* 本轮抽几张：区间内均匀随机。countMin=0 → 0（走「按顺序」分支，不进这里）。
+   ⚠️ 用 Math.random 现摇，不在 createRound 里预摇 —— 摇号属于"现场演算"，
+   和 collapseStep 同一个原则（见 README §抽卡算法 / HANDOFF §1.1）。 */
+function rollCount(poolLen){
+  if(settings.countMin===0) return 0;
+  const lo=Math.min(settings.countMin,poolLen);
+  const hi=Math.min(settings.countMax,poolLen);
+  return hi<=lo ? lo : lo+Math.floor(Math.random()*(hi-lo+1));
+}
+
+const els = {
+  list:$('#cardList'), count:$('#cardCount'), search:$('#searchInput'),
+  messages:$('#messages'), input:$('#messageInput'), send:$('#sendBtn'),
+  tree:$('#tree'), statPool:$('#statPool'), statSteps:$('#statSteps'),
+  modal:$('#cloudModal'), stage:$('#cloudStage'), hint:$('#cloudHint'), tip:$('#cloudTip'),
+  lens:$('#lens'),
+  bandL:$('#zoneL'), bandC:$('#zoneC'), bandR:$('#zoneR'),
+  rail:$('#railNodes'), footer:$('#cloudFooter'), result:$('#cloudResult'),
+  replay:$('#replayBtn'), skip:$('#skipBtn'), reopen:$('#reopenRoundBtn'),
+  resume:$('#resumeBtn'),
+  fastPanel:$('#fastPanel'), fastNum:$('#fastNum'), fastNote:$('#fastNote'),
+  health:$('#health'), healthNote:$('#healthNote'),
+  libToast:$('#libToast'), headSub:$('#headSub')
+};
+
+/* ---------------- 基础工具 ---------------- */
+function uid(p='card'){ return p+'-'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4); }
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+function lenOf(t){ return String(t||'').replace(/\s/g,'').length; }
+function nowTs(){ return Date.now(); }
+function timeText(ts){
+  const d=new Date(ts); const p=n=>String(n).padStart(2,'0');
+  return p(d.getHours())+':'+p(d.getMinutes());
+}
+
+/* 可复现随机：一轮用同一个种子，动画任何时候重播都是同一批卡。 */
+function mulberry32(seed){
+  let t=seed>>>0;
+  return function(){
+    t+=0x6D2B79F5;
+    let r=Math.imul(t^(t>>>15), t|1);
+    r^=r+Math.imul(r^(r>>>7), r|61);
+    return ((r^(r>>>14))>>>0)/4294967296;
+  };
+}
+function shuffle(items, rand){
+  const a=items.slice();
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(rand()*(i+1)); const t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+
+/* ---------------- 存档 ---------------- */
+function load(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+    if(!raw) return;
+    if(Array.isArray(raw.cards)) state.cards=raw.cards.filter(c=>c&&typeof c.text==='string'&&c.text.trim()).map(c=>({
+      id:String(c.id||uid()), text:c.text, used:Number(c.used)||0, lastUsedAt:Number(c.lastUsedAt)||0
+    }));
+    if(Array.isArray(raw.messages)) state.messages=raw.messages.filter(m=>m&&(m.side==='me'||m.side==='other')).map(m=>({
+      side:m.side, text:String(m.text||''), ts:Number(m.ts)||nowTs(), roundId:m.roundId?String(m.roundId):null
+    })).slice(-200);
+    if(raw.rounds&&typeof raw.rounds==='object'){
+      for(const k of Object.keys(raw.rounds)){
+        const r=raw.rounds[k];
+        if(r&&Array.isArray(r.pool)&&Array.isArray(r.picks)) state.rounds[String(k)]=r;
+      }
+    }
+    if(Array.isArray(raw.roundOrder)) state.roundOrder=raw.roundOrder.map(String).filter(id=>state.rounds[id]);
+    state.seeded=!!raw.seeded;
+    if(raw.settings&&typeof raw.settings==='object'){
+      /* ⚠️ 老存档是单一 settings.count（0=按顺序，1~6=固定抽几张）。
+         这里迁移成区间：count>0 → [1, count]（保持"最多抽 count 张"这个上限不变，
+         默认行为不会突然变长）；count=0 → 按顺序（countMin=0）。
+         迁移只判一次 —— 迁移后写入的就是 countMin/countMax，下次不会再走这条路。 */
+      if(typeof raw.settings.countMin==='number' || typeof raw.settings.countMax==='number'){
+        settings.countMin=raw.settings.countMin;
+        settings.countMax=raw.settings.countMax;
+      }else if(typeof raw.settings.count==='number'){
+        const c=clamp(raw.settings.count|0,0,6);
+        settings.countMin=c===0?0:1;
+        settings.countMax=c===0?1:c;
+      }
+      if(typeof raw.settings.speed==='number') settings.speed=clamp(raw.settings.speed|0,120,1000);
+    }
+    normRange();
+  }catch(e){ /* 存档坏了就用默认值，不崩 */ }
+}
+let saveTimer=null;
+/* 轮次路径的字节预算。点单 localStorage 一般 5MB/域，而聊天+字卡本身要占 ~150KB，
+   还得给同域别的页面留余量。 */
+const ROUNDS_BUDGET=2800000;
+let storageWarned=false;
+function storageWarn(msg){
+  if(storageWarned) return;
+  storageWarned=true;
+  try{ libToast(msg); }catch(e){}
+}
+/* 真正写盘。⚠️ 分成两个函数是有原因的：普通改动走 save() 的 180ms 防抖（打字时
+   不会每敲一个字写一次 localStorage），但**批量改动（导入 / 批量添加）必须立刻落盘** ——
+   客户导入 2000 条之后手快一点刷新页面，防抖窗口里就白导了。
+
+   ⚠️⚠️ 这里曾经是 `state.roundOrder.slice(-40)`：**一轮 = 整份候选池 + 每一层的 id 表**，
+   真库 1893 张时约 **590KB/轮**，40 轮 ≈ 23MB，而配额只有 5MB —— 第 7~8 轮就写不进去了。
+   写失败又被 `catch(e){}` **静默吞掉**，于是**从爆掉那一刻起每一次保存都失败**，
+   存档冻结在最后一次成功的位置。用户看到的就是：
+   「聊天记录只存最开始那几句，一刷新后面聊的全没了」（桌面版手机版同时中招）。
+   现在：① 轮次按**字节**装，从新到旧，装不下就停在刚好放得下处；
+   ② 三级降级重试，**保证聊天记录一定写得进去**（那是绝不能丢的一份）；
+   ③ 真的降级了会明确告诉用户，不再静默。 */
+function writeNow(){
+  const messages=state.messages.slice(-200);
+  let keep=[], rounds={}, bytes=0;
+  for(let i=state.roundOrder.length-1;i>=0 && keep.length<40;i--){
+    const id=state.roundOrder[i], r=state.rounds[id];
+    if(!r) continue;
+    /* ⚠️ `cur` / `remaining` 是"正在抽这一张"的临时状态，演完就没人读了。
+       存它们等于把整份候选池再抄两遍（真库下 2×124KB/轮）→ 白白吃掉回看历史。
+       回放只读 layers / picks / pool，这里就只留这些。 */
+    const slim={ id:r.id, pool:r.pool, count:r.count, picks:r.picks, layers:r.layers,
+                 committed:r.committed, createdAt:r.createdAt };
+    const s=JSON.stringify(slim);
+    if(keep.length && bytes+s.length>ROUNDS_BUDGET) break;   /* 至少留一轮，别把自己饿死 */
+    bytes+=s.length; keep.unshift(id); rounds[id]=slim;
+  }
+  const tries=[
+    { rounds, roundOrder:keep, messages },
+    { rounds:{}, roundOrder:[], messages },
+    { rounds:{}, roundOrder:[], messages: messages.slice(-60) }
+  ];
+  for(let i=0;i<tries.length;i++){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        cards:state.cards, messages:tries[i].messages,
+        rounds:tries[i].rounds, roundOrder:tries[i].roundOrder,
+        settings, seeded:state.seeded
+      }));
+      if(i===1) storageWarn('回看用的历史路径超出浏览器存储上限，已清掉最旧的；聊天记录不受影响。');
+      else if(i===2) storageWarn('浏览器存储已满，只保留了最近 60 条聊天。建议先「导出备份」再清理字卡库。');
+      return;
+    }catch(e){ /* 这一份还是太大 → 换更小的一份再试 */ }
+  }
+  storageWarn('聊天记录存不下了（浏览器存储已满）。请先用「导出备份」存一份，再删掉一些字卡。');
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(writeNow,180);
+}
+
+/* ---------------- 字卡库 ---------------- */
+function visibleCards(){
+  const q=state.search.trim().toLowerCase();
+  let list=state.cards.slice();
+  if(q) list=list.filter(c=>c.text.toLowerCase().indexOf(q)>=0);
+  if(state.sort==='freq') list.sort((a,b)=>(b.used-a.used)||(b.lastUsedAt-a.lastUsedAt));
+  else if(state.sort==='len') list.sort((a,b)=>lenOf(b.text)-lenOf(a.text));
+  /* 正在编辑的那张卡钉在最前：排序一变它就跳走，用户会找不着自己刚点的 ✎ */
+  if(state.editingId){
+    const i=list.findIndex(c=>c.id===state.editingId);
+    if(i>0) list.unshift(list.splice(i,1)[0]);
+  }
+  return list;
+}
+function highlight(text){
+  const q=state.search.trim();
+  if(!q) return esc(text);
+  const i=text.toLowerCase().indexOf(q.toLowerCase());
+  if(i<0) return esc(text);
+  return esc(text.slice(0,i))+'<em>'+esc(text.slice(i,i+q.length))+'</em>'+esc(text.slice(i+q.length));
+}
+function renderLibrary(){
+  const list=visibleCards();
+  els.count.textContent=state.cards.length+' 张'+(state.search?(' · 命中 '+list.length):'');
+  if(!state.cards.length){
+    els.list.innerHTML='<div class="sub">字卡库是空的。先在下面加一张，或者展开「批量添加与备份」粘贴一段。</div>';
+    return;
+  }
+  if(!list.length){
+    els.list.innerHTML='<div class="sub">没有匹配「'+esc(state.search)+'」的字卡。</div>';
+    return;
+  }
+  els.list.innerHTML=list.map(card=>{
+    if(state.editingId===card.id){
+      return '<div class="lib-card"><i class="dot"></i><div class="body">'
+        +'<textarea data-edit="'+card.id+'" maxlength="120">'+esc(card.text)+'</textarea>'
+        +'<div class="edit-row"><button class="mini-btn" data-save="'+card.id+'">保存</button>'
+        +'<button class="mini-btn" data-cancel="1">取消</button></div></div></div>';
+    }
+    const hit=state.hitIds.has(card.id);
+    const cold=card.used===0;
+    const meta=[];
+    if(card.used) meta.push('<span class="freq'+(card.used>=8?' hot':'')+'">抽过 '+card.used+' 次</span>');
+    else meta.push('<span>还没被抽到</span>');
+    if(card.lastUsedAt) meta.push('<span>'+timeText(card.lastUsedAt)+'</span>');
+    meta.push('<span class="len">'+lenOf(card.text)+' 字</span>');
+    return '<div class="lib-card'+(hit?' hit':'')+'">'
+      +'<i class="dot'+(cold?' cold':'')+'"></i>'
+      +'<div class="body"><p>'+highlight(card.text)+'</p><div class="meta">'+meta.join('')+'</div></div>'
+      +'<div class="acts"><button class="mini-btn" data-edit="'+card.id+'" aria-label="编辑这张字卡" title="编辑">✎</button>'
+      +'<button class="mini-btn danger" data-delete="'+card.id+'" aria-label="删除这张字卡" title="删除">×</button></div></div>';
+  }).join('');
+  const ta=els.list.querySelector('textarea[data-edit]');
+  if(ta){ ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); }
+}
+function addCards(texts){
+  let n=0;
+  texts.forEach(t=>{
+    const s=String(t==null?'':t).trim().slice(0,120);
+    if(!s) return;
+    if(state.cards.some(c=>c.text===s)) return;   /* 库内去重：同一条不占两格 */
+    state.cards.push({id:uid(), text:s, used:0, lastUsedAt:0});
+    n++;
+  });
+  /* 批量导入：立刻落盘，不等防抖 —— 导入完马上刷新页面不能白导 */
+  if(n){ writeNow(); renderLibrary(); renderHealth(); }
+  return n;
+}
+function libToast(msg){ els.libToast.textContent=msg; if(msg) setTimeout(()=>{ if(els.libToast.textContent===msg) els.libToast.textContent=''; },4000); }
+
+function exportJson(){
+  const data={ type:'card-cloud-backup', v:2, exportedAt:new Date().toISOString(), cards:state.cards.map(c=>({text:c.text,used:c.used,lastUsedAt:c.lastUsedAt})), messages:state.messages };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='字卡库-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  libToast('已导出 '+state.cards.length+' 张字卡和 '+state.messages.length+' 条对话。');
+}
+/* 从任意来源的 JSON 里挑出所有字卡文本。兼容四种输入：
+   ① 裸数组                 ['文本', {text}, ...]
+   ② 本站备份               {cards:[...]}
+   ③ 回复库导出（带分组）   {customReplies:[...], customReplyGroups:[{name,items}]}
+   ④ 其它                   顶层第一个"字符串数组"兜底
+   ⚠️ ③ 里分组的 items 通常已经包含在 customReplies 里，会重复出现 ——
+      不去手动剔除，交给 addCards 按文本去重，省一份容易写错的逻辑。 */
+function pickCardTexts(data){
+  const out=[];
+  const push=v=>{
+    if(typeof v==='string') out.push(v);
+    else if(v && typeof v.text==='string') out.push(v.text);
+  };
+  if(Array.isArray(data)){ data.forEach(push); return out; }
+  if(!data || typeof data!=='object') return out;
+  ['cards','customReplies','replies','items','list'].forEach(k=>{
+    if(Array.isArray(data[k])) data[k].forEach(push);
+  });
+  if(Array.isArray(data.customReplyGroups)){
+    data.customReplyGroups.forEach(g=>{
+      if(g && Array.isArray(g.items)) g.items.forEach(push);
+    });
+  }
+  if(out.length) return out;
+  for(const k in data){
+    const v=data[k];
+    if(Array.isArray(v) && v.length && typeof v[0]==='string') return v.slice();
+  }
+  return out;
+}
+function importJson(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const data=JSON.parse(String(rd.result||'null'));
+      const texts=pickCardTexts(data);
+      const real=texts.map(t=>String(t==null?'':t).trim()).filter(Boolean);
+      if(!real.length) throw 0;
+      const n=addCards(real);
+      libToast(n?('导入完成，新增 '+n+' 张，重复的已跳过。')
+                 :('没有新增：'+real.length+' 条全部已在库里。'));
+    }catch(e){
+      libToast('导入失败：这个文件不是字卡库 JSON。原有字卡没有被动过。');
+    }
+  };
+  rd.onerror=()=>libToast('导入失败：读不到文件内容。');
+  rd.readAsText(file);
+}
+
+/* ---------------- 卡池体检 ----------------
+   抽卡算法对"像真人"的贡献接近零。真正决定观感的是客户写的卡本身。
+   所以体检的作用不是去改抽卡结果，而是告诉客户"哪几张卡其实白写了"。 */
+function renderHealth(){
+  const n=state.cards.length;
+  if(!n){ els.health.innerHTML=''; els.healthNote.className='hnote'; els.healthNote.textContent='字卡库是空的，体检没有意义。'; return; }
+  const cold=state.cards.filter(c=>!c.used).length;
+  const hot=state.cards.filter(c=>c.used>=12).length;
+  const long=state.cards.filter(c=>lenOf(c.text)>22).length;
+  const avg=Math.round(state.cards.reduce((a,c)=>a+lenOf(c.text),0)/n);
+  const pulls=state.messages.filter(m=>m.side==='other').length;
+  const row=(label,val,coldCls)=>'<div class="hstat"><span>'+label+'</span><b class="'+(coldCls||'')+'">'+val+'</b></div>';
+  els.health.innerHTML=
+      row('字卡总数', n+' 张')
+    + row('还没被抽到', cold+' 张', cold>0&&cold/n>.5?'cold':'')
+    + row('被抽过 12 次以上', hot+' 张', hot>0?'':'cold')
+    + row('平均字数', avg+' 字')
+    + row('已发生的抽取', pulls+' 轮');
+
+  const notes=[];
+  if(n<6) notes.push('池子只有 '+n+' 张。少于 6 张时，TA 的回应会明显单薄。');
+  if(cold===n) notes.push('所有卡都还没被抽到 —— 这个是正常状态，发送一条消息就能看到抽取分布。');
+  else if(cold/n>.4) notes.push((n-cold)+' 张卡一次都没出现过，说明它们写得跟当前语境不搭，或者太长了。');
+  if(avg>26) notes.push('平均 '+avg+' 字偏长。一轮连着发好几条长句，读起来会有点喘。');
+  if(long) notes.push(long+' 张超过 22 字。长卡适合独自成句，不适合连着发。');
+  if(hot>=2) notes.push('有 '+hot+' 张卡被抽了 12 次以上，TA 已经在围绕它们说话了。');
+
+  els.healthNote.className='hnote'+(notes.some(t=>t.indexOf('偏长')>=0||t.indexOf('长卡')>=0)?' warn':'');
+  els.healthNote.textContent=notes.length?notes.join(' '):'分布挺健康。字数短、覆盖广，随机抽出来就是自然的回应。';
+}
+
+/* ---------------- 抽取核心 ----------------
+   ⚠️ 结果不是预先摇定的。每一层的分支都是演到那一层才当场摇出来 ——
+   动画走一步，才产生一步的结果。所以 round 里没有"预定结果"这回事，
+   只有"当前候选"和"已经走过的层"。
+
+   这样重演一遍会得到不同的卡（没有 seed 可复现），这是刻意的：
+   它让"镜头在左还是右"变成真的现场选择，而不是回放一段已定的剧本。 */
+function createRound(pool, requested){
+  /* 只摇一次队形：决定卡在轴上怎么排。跟最终抽中谁无关。 */
+  const ordered=shuffle(pool.map(c=>({...c})), Math.random);
+  const count=Math.max(1,Math.min(requested,ordered.length));
+  return {
+    id: uid('round'),
+    pool: ordered,
+    count: count,
+    pick: 0,                 /* 正在抽第几张 */
+    picks: [],               /* 已抽中的卡 id */
+    layers: [],              /* 已演过的层（检查器 / rail 读它） */
+    cur: ordered.slice(),    /* 当前这一张的候选 */
+    remaining: ordered.slice(),
+    committed: false,
+    createdAt: nowTs()
+  };
+}
+
+/* 演一步：当场摇号决定保留哪一支。
+   ⚠️ 摇号就发生在调用这一次的瞬间 —— 镜头摆到最后一刻停在哪，就是这里定的。
+   返回这一层的 step，供动画渲染和检查器记录。 */
+function collapseStep(round){
+  const cur=round.cur;
+  if(cur.length<=1){
+    return { pick: round.pick, leaf:true, ids:cur.map(c=>c.id),
+             leftIds:[], centerId:null, rightIds:[], keepIds:cur.map(c=>c.id),
+             branch:null, finalId: cur.length?cur[0].id:null };
+  }
+  const odd=cur.length%2===1;
+  const center=odd?cur[Math.floor(cur.length/2)]:null;
+  const rest=center?cur.filter(c=>c.id!==center.id):cur;
+  const half=Math.ceil(rest.length/2);
+  const left=rest.slice(0,half);
+  const right=rest.slice(half);
+  /* 奇数长度时中心那一张按 1/总张数 的概率被直接选中，
+     其余情况在左右两支里按张数加权选 —— 保证每张卡落点机会均等。 */
+  const branch=odd && Math.random()<1/cur.length
+    ? 'center'
+    : (Math.random()<left.length/(left.length+right.length) ? 'left' : 'right');
+  const keep=branch==='center'?[center]:(branch==='left'?left:right);
+  const step={ pick: round.pick, leaf:false, ids:cur.map(c=>c.id), branch,
+               leftIds:left.map(c=>c.id), centerId:center?center.id:null,
+               rightIds:right.map(c=>c.id), keepIds:keep.map(c=>c.id), finalId:null };
+  round.cur=keep;
+  round.layers.push(step);
+  return step;
+}
+
+/* 把一张抽完（不走动画，跳过 / 探针用）：反复摇到只剩一张。
+   每一步仍然是真摇号，所以跳过拿到的结果和"慢慢演"同样是随机的，只是不等动画。 */
+function finishPick(round){
+  let s;
+  do{ s=collapseStep(round); }while(!s.leaf);
+  return s.finalId;
+}
+/* 落定一张：把这张记进 picks，从剩余候选里移除，准备抽下一张。
+   返回 true 表示还要继续抽。 */
+function settlePick(round){
+  const s=round.layers[round.layers.length-1];
+  const id=(s&&s.finalId)||(round.cur.length?round.cur[0].id:null);
+  if(!id) return false;
+  round.picks.push(id);
+  round.layers.push({ pick:round.pick, leaf:true, ids:[id], leftIds:[], centerId:null,
+                      rightIds:[], keepIds:[id], branch:null, finalId:id });
+  const ix=round.remaining.findIndex(c=>c.id===id);
+  if(ix>=0) round.remaining.splice(ix,1);
+  round.pick++;
+  if(round.pick>=round.count || !round.remaining.length) return false;
+  round.cur=round.remaining.slice();
+  return true;
+}
+/* 按 id 取卡。⚠️ 别在循环里 round.pool.find —— 1975 张时那是 O(n²)，
+   光这一行就能把一层卡住几百毫秒。一次建索引，之后 O(1)。 */
+function poolGet(round,id){
+  if(!round.byId) round.byId=new Map(round.pool.map(c=>[c.id,c]));
+  return round.byId.get(id);
+}
+function roundTexts(round){ return round.picks.map(id=>poolGet(round,id)).filter(Boolean); }
+
+/* 逐张按顺序说（count=0 模式）：不摇号、不收缩，走队尾循环。 */
+function nextInOrder(){
+  if(!state.cards.length) return null;
+  const i=state.orderAt==null?0:state.orderAt;
+  const c=state.cards[i%state.cards.length];
+  state.orderAt=(i+1)%state.cards.length;
+  return c;
+}
+function markUsed(ids){
+  const t=nowTs();
+  ids.forEach(id=>{
+    const c=state.cards.find(x=>x.id===id);
+    if(c){ c.used=(c.used||0)+1; c.lastUsedAt=t; }
+  });
+}
+
+/* ---------------- 消息区 ---------------- */
+function renderMessages(){
+  els.messages.innerHTML='';
+  if(!state.messages.length){
+    const d=document.createElement('div');
+    d.className='empty';
+    d.innerHTML='<strong>让字卡自己靠近</strong><span>输入一句话，看看 '+state.cards.length+' 张候选如何一轮轮收缩成回复。</span>'
+      +'<div class="eg">'+IMPORTED_LIBRARY.slice(0,4).map(t=>'<b>'+esc(t)+'</b>').join('')+'</div>';
+    els.messages.append(d);
+    return;
+  }
+  state.messages.forEach(m=>{
+    const row=document.createElement('div');
+    row.className='msg '+(m.side==='me'?'me':'');
+    const meta=m.side==='me'?'我 · '+timeText(m.ts):'TA · '+timeText(m.ts)+(m.roundId?' · 云抽取':'');
+    row.innerHTML='<div class="bubble">'+esc(m.text)+'</div><div class="msg-meta">'+meta+'</div>';
+    els.messages.append(row);
+  });
+  if(state.typing){
+    const t=document.createElement('div');
+    t.className='typing'; t.id='typing';
+    t.innerHTML='<span></span><span></span><span></span> TA 正在整理字卡';
+    els.messages.append(t);
+  }
+  els.messages.scrollTop=els.messages.scrollHeight;
+}
+function showTyping(on){ state.typing=on; renderMessages(); }
+
+/* ---------------- 分区方框 + 框内网格 ----------------
+   排版模型换过一次，理由记在这里免得又改回去：
+   最早是「所有候选等分一条轴、卡上下交错两排」。在 61 张这种量级下就崩了 ——
+   横向每张分到 10px 不到，文字叠成一团，而上下大片空间全空着（卡只占了正中一条）。
+   现在：**先把舞台切成左 / 中 / 右三个方框，再在每个框内网格排布**。
+     · 纵向空间被用起来（框几乎占满舞台高度）
+     · 卡宽由「框宽 ÷ 每行张数」决定，不再由「舞台宽 ÷ 总张数」决定
+     · 区域边界就是框，镜头扫的也是框，语义比"数轴上的一段"更清楚
+
+   ⚠️ 镜头不缩放 —— 三条硬要求决定了这点：
+     ① 每一层要同时看得见左区、中心、右区（一缩放就被推出画面）；
+     ② 卡一多要能看清是哪张（缩放只会让远处更小）；
+     ③ 要有真动效（缩放 + 定格 = 幻灯片；镜头滑动才是动效）。
+   所以"一轮轮收拢"改由"卡越来越少 → 框内自动摊得更开"来表达。
+
+   ⚠️ 结果不是预先摇定的。collapseStep() 由动画循环在「镜头扫完停下的那一刻」调用。
+   已经演完的层记在 round.layers 里，那只是一份录像；回看 / 重播放的是录像，不重摇。 */
+/* ⚠️⚠️ 手机版的核心差别：三个框**竖直**排（上/中/下），镜头竖直扫。
+   桌面版是横向三个框，在 390px 宽的手机上每框只剩 ~92px、卡宽 68px，读不清；
+   竖排后每个框都是整屏宽，卡能到 150~250px 宽，2 行字也放得下。
+   注意：**只改几何，不改抽卡**。zoneIdx/collapseStep 的切法（left/center/right 三个
+   数据分组）原样保留，只是把 left 画在上面、right 画在下面。 */
+const AX_PAD=12;        /* 舞台左右留白 */
+const BOX_PAD=8;        /* 框内边距 */
+const BOX_GAP=8;        /* 框之间的间距（竖向） */
+const BOX_TOP=30;       /* 框顶（给左上角提示留位） */
+const BOX_BOT=12;
+const CARD_H=40;        /* 卡面高度：够放 2 行 12px/1.25 */
+const CARD_GAP=6;
+const CARD_MAX=250;     /* 手机上一行可以很宽，不必像桌面那样卡在 176 */
+const CARD_MIN=58;      /* 窄于此就退化成圆点 */
+const CENTER_RATIO=0.24;/* 中框（只有 1 张）占舞台高的比例 —— 取代桌面版的 CENTER_BOX 宽度 */
+/* 候选超过这个数就先"快速收拢"，不排版也不走镜头动画。
+   ⚠️ 手机与桌面**都用 30**（客户 2026-10-05 指出手机版"好像从 10 以下才开始演"——
+   那是我先前为小屏单独调低到 12 造成的口径不一致，已改回 30）。
+   ⚠️ 这个阈值**只影响怎么展示**，不影响抽谁 —— collapseStep 调用次数一模一样，
+   结果的分布和桌面版完全一致。 */
+const ANIM_FROM=30;
+const FAST_TICK=70;   /* 快进阶段每层的间隔：够快不拖沓，又看得出在收拢 */
+
+let rafId=0, lensX=0, lensY=0, lensW=0, lensH=0, curEls={};
+function halt(){ if(rafId){ cancelAnimationFrame(rafId); rafId=0; } clearTimeout(state.timer); }
+function stageW(){ return els.stage.clientWidth||760; }
+function stageH(){ return els.stage.clientHeight||470; }
+function setMove(sec){ els.stage.style.setProperty('--move',sec+'s'); }
+function easeOut(t){ return 1-Math.pow(1-t,3); }
+
+/* 统一的时间轴：所有连续动作都走 rAF，不走 CSS 过渡 —— 过渡是"跳一下"，
+   rAF 才是逐帧真的在动。token 变了（关弹层 / 开新一轮）就立刻停。 */
+function animate(ms, fn, done){
+  const tk=state.token, t0=performance.now();
+  const dead=()=> tk!==state.token || els.modal.classList.contains('hidden');
+  const frame=()=>{
+    if(dead()){ rafId=0; return; }
+    const p=clamp((performance.now()-t0)/Math.max(1,ms),0,1);
+    fn(p);
+    if(p<1) rafId=requestAnimationFrame(frame);
+    else { rafId=0; if(done) done(); }
+  };
+  rafId=requestAnimationFrame(frame);
+}
+
+/* 候选按下标切成左 / 中 / 右。⚠️ 必须和 collapseStep 的切法逐行一致，
+   否则会出现"镜头停左、结果取右"这种直接穿帮。 */
+function zoneIdx(n){
+  if(n%2===1){ const mid=Math.floor(n/2); return { left:[0,mid-1], center:mid, right:[mid+1,n-1] }; }
+  const half=n/2; return { left:[0,half-1], center:-1, right:[half,n-1] };
+}
+
+/* 一个框里怎么排。
+   两行贪心：先按框宽算"理想每行几张"，再看框高最多塞得下几行，
+   取两者的**下限**（保证既放得下、卡又尽可能宽），最后把不足一行的末行居中。 */
+function gridIn(box, list){
+  const n=list.length;
+  if(!n) return { pos:[], cols:0, rows:0, cw:0, compact:true };
+  const innerW=Math.max(10, box.w-BOX_PAD*2);
+  const innerH=Math.max(10, box.h-BOX_PAD*2);
+  const rowsMax=Math.max(1, Math.floor((innerH+CARD_GAP)/(CARD_H+CARD_GAP)));
+  const colsMin=Math.ceil(n/rowsMax);                    /* 要塞进框高，至少得这么多列 */
+  let cols=clamp(colsMin, 1, n);
+  let cw=Math.min(CARD_MAX, (innerW-CARD_GAP*(cols-1))/cols);
+  /* 卡太窄就减列（减列 → 每行更宽）。仍不够宽才退化成圆点。 */
+  while(cw<CARD_MIN && cols>1){
+    cols--;
+    cw=Math.min(CARD_MAX, (innerW-CARD_GAP*(cols-1))/cols);
+  }
+  const compact=cw<CARD_MIN;
+  const rows=Math.ceil(n/cols);
+  const totalH=rows*CARD_H+(rows-1)*CARD_GAP;
+  const y0=box.y+BOX_PAD+Math.max(0,(innerH-totalH)/2);
+  const pos=[];
+  for(let i=0;i<n;i++){
+    const r=Math.floor(i/cols), c=i%cols;
+    const rowN=Math.min(cols, n-r*cols);
+    const rowW=rowN*cw+(rowN-1)*CARD_GAP;
+    const x0=box.x+BOX_PAD+(innerW-rowW)/2;
+    pos.push({ x:x0+c*(cw+CARD_GAP)+cw/2,
+               y:y0+r*(CARD_H+CARD_GAP)+CARD_H/2,
+               w:cw, h:CARD_H, col:c, row:r });
+  }
+  return { pos, cols, rows, cw, compact };
+}
+
+/* 本层排版：切三个方框 + 框内网格。不缩放、不按总张数等分。 */
+function layoutFor(ids){
+  const W=stageW(), H=stageH(), n=Math.max(1,ids.length);
+  const z=zoneIdx(n);
+  const cntC=z.center>=0?1:0;
+  const inner=W-AX_PAD*2, availH=Math.max(80, H-BOX_TOP-BOX_BOT);
+
+  /* ⚠️ 竖直排：三个框上下叠，每个都占**整屏宽**。
+     left 画在最上、center 居中、right 在最下 —— 数据分组名沿用 left/center/right，
+     只换几何，这样 zoneIdx / collapseStep / branch 那套判断一行都不用动。 */
+  let boxes={ left:null, center:null, right:null };
+  if(n===1){
+    /* 只剩一张：给一个高度贴合的居中框，别上下空两个大框 */
+    const h=Math.min(availH, CARD_H+BOX_PAD*2+14);
+    boxes.center={ x:AX_PAD, y:BOX_TOP+(availH-h)/2, w:inner, h, ids:ids.slice() };
+  }else{
+    const gaps=(cntC?3:2)-1;
+    const hC=cntC?Math.min(availH*CENTER_RATIO, CARD_H+BOX_PAD*2+10):0;
+    const hS=Math.max(40,(availH-hC-BOX_GAP*gaps)/2);
+    boxes.left ={ x:AX_PAD, y:BOX_TOP, w:inner, h:hS, ids:ids.slice(z.left[0], z.left[1]+1) };
+    if(cntC) boxes.center={ x:AX_PAD, y:BOX_TOP+hS+BOX_GAP, w:inner, h:hC, ids:[ids[z.center]] };
+    boxes.right={ x:AX_PAD, y:BOX_TOP+hS+BOX_GAP+(cntC?hC+BOX_GAP:0), w:inner, h:hS,
+                  ids:ids.slice(z.right[0], z.right[1]+1) };
+  }
+  const pos={};
+  let allCompact=true;
+  ['left','center','right'].forEach(k=>{
+    const b=boxes[k]; if(!b) return;
+    const g=gridIn(b, b.ids);
+    b.grid=g; if(!g.compact) allCompact=false;
+    b.ids.forEach((id,i)=>{ pos[id]=g.pos[i]; });
+  });
+  return { W,H,n,z,boxes,pos,compact:allCompact };
+}
+
+/* 扫视路径：左 → 中 → 右（缺哪个跳哪个） */
+function swayBoxes(L){
+  return ['left','center','right'].map(k=>L.boxes[k]).filter(b=>b && b.ids.length);
+}
+/* 某个分支对应的框；该分支没有卡时返回 null（不能让镜头停在空框上） */
+function zoneBox(L, n, branch){
+  if(branch==='left'||branch==='right'||branch==='center'){
+    const b=L.boxes[branch];
+    return (b && b.ids.length) ? b : null;
+  }
+  const s=swayBoxes(L);
+  return s.length?s[0]:null;
+}
+function boxKeyOf(L,b){
+  return ['left','center','right'].find(k=>L.boxes[k]===b) || 'left';
+}
+/* 造一层"待决定"的分帧：只有分区，没有结果。镜头扫视阶段用它。 */
+function scanStep(round){
+  const ids=round.cur.map(c=>c.id), n=ids.length, z=zoneIdx(n);
+  return { pick:round.pick, leaf:false, ids:ids,
+           leftIds:ids.slice(z.left[0],z.left[1]+1),
+           centerId:z.center>=0?ids[z.center]:null,
+           rightIds:z.right[0]<=z.right[1]?ids.slice(z.right[0],z.right[1]+1):[],
+           keepIds:[], branch:null, finalId:null };
+}
+function setBand(el,b,win){
+  if(!b){ el.classList.remove('on','win'); return; }
+  el.style.left=b.x+'px'; el.style.top=b.y+'px';
+  el.style.width=Math.max(10,b.w)+'px'; el.style.height=Math.max(10,b.h)+'px';
+  el.classList.add('on'); el.classList.toggle('win',!!win);
+}
+function setLens(x,y,w,h,win){
+  lensX=x; lensY=y; lensW=Math.max(10,w); lensH=Math.max(10,h);
+  els.lens.style.transform='translateX('+x+'px)';
+  els.lens.style.top=y+'px';
+  els.lens.style.width=lensW+'px';
+  els.lens.style.height=lensH+'px';
+  els.lens.classList.toggle('win',!!win);
+}
+function setLensBox(b,win){ if(b) setLens(b.x,b.y,b.w,b.h,win); }
+/* ⚠️ 竖排后三个框的 x 完全一样，只有 y 不同 —— 判"镜头现在看哪个区"
+   必须比**中心的 y**，不能还比 x（那会让三个框永远算出同一个区）。 */
+function zoneNameOf(L,step,cy){
+  const s=swayBoxes(L);
+  if(!s.length) return 'left';
+  let best=boxKeyOf(L,s[0]), bd=Infinity;
+  s.forEach(b=>{
+    const d=Math.abs((b.y+b.h/2)-cy);
+    if(d<bd){ bd=d; best=boxKeyOf(L,b); }
+  });
+  return best;
+}
+const ZN={ left:'上区', center:'中间', right:'下区' };
+
+function ensureCard(round,c){
+  let el=curEls[c.id];
+  if(el&&el.isConnected) return el;
+  el=document.createElement('button');
+  el.type='button';
+  el.className='axis-card';
+  el.dataset.id=c.id; el.dataset.text=c.text;
+  el.innerHTML='<span class="tx"></span>';   /* 不再需要"挂在线上"的刻度线 tk */
+  el.querySelector('.tx').textContent=c.text;
+  el.setAttribute('aria-label','候选字卡：'+c.text);
+  el.addEventListener('mouseenter',showTip);
+  el.addEventListener('mouseleave',hideTip);
+  el.addEventListener('focus',showTip);
+  el.addEventListener('blur',hideTip);
+  /* 手机没有 hover：戳一下看全文，再戳一下收起 */
+  el.addEventListener('click',ev=>{
+    if(els.tip.classList.contains('on') && els.tip.dataset.for===c.id){
+      hideTip(); els.tip.dataset.for='';
+    }else{
+      els.tip.dataset.for=c.id; showTip(ev);
+    }
+  });
+  curEls[c.id]=el;
+  els.stage.append(el);
+  return el;
+}
+
+/* 画一层。locked=null 表示镜头还在扫（没有结果），否则是已经摇定的层。 */
+function paintLayer(round,step,L,locked){
+  state.lastPaint={ round, step, L, locked };
+  const ids=step.ids||[];
+  const keep=new Set(locked?(step.keepIds||[]):[]);
+  ids.forEach((id)=>{
+    const c=poolGet(round,id);
+    const p=L.pos[id];
+    if(!c||!p) return;
+    const el=ensureCard(round,c);
+    el.classList.remove('out');
+    /* 放不下文字就退化成圆点。⚠️ 圆点必须取正方形尺寸：
+       gridIn 给的 cw 可能只有 20px 宽，而 p.h 恒为 CARD_H(42)，
+       直接用会渲染成椭圆。 */
+    const compact=p.w<CARD_MIN;
+    const d=compact?Math.min(p.h,p.w):0;
+    el.classList.toggle('compact',compact);
+    el.classList.toggle('win',Boolean(locked&&keep.has(id)));
+    el.style.left=p.x+'px';
+    el.style.top=p.y+'px';
+    el.style.width=(compact?d:p.w)+'px';
+    el.style.height=(compact?d:p.h)+'px';
+    el.style.padding=compact?'0':'0 6px';
+  });
+  Object.keys(curEls).forEach(id=>{
+    if(ids.indexOf(id)>=0) return;
+    curEls[id].classList.add('out');
+  });
+  const n=ids.length;
+  setBand(els.bandL, zoneBox(L,n,'left'),   locked&&step.branch==='left');
+  setBand(els.bandC, zoneBox(L,n,'center'), locked&&step.branch==='center');
+  setBand(els.bandR, zoneBox(L,n,'right'),  locked&&step.branch==='right');
+  const target=zoneBox(L,n,step.branch);
+  /* 开场镜头就停在头一个框上，别留个 0 宽的空壳（那是 v3 的老坑） */
+  if(locked){ if(target) setLensBox(target,true); }
+  else{ const s=swayBoxes(L); if(s.length) setLensBox(s[0],false); }
+  sayLayer(round,step,locked?(ZN[step.branch]||''):'');
+}
+function sayLayer(round,step,zone){
+  const pickNo=(step.pick||0)+1;
+  const n=locked_n(step,zone);
+  els.hint.textContent='第 '+pickNo+' 张 · 候选 '+n+' 张';
+  if(step.leaf) els.footer.textContent='这张就是这一次的回应';
+  else if(!zone) els.footer.textContent='镜头在三个方框之间来回扫视，看过哪一区再决定留下哪一区……';
+  else els.footer.textContent='镜头停在'+zone+'，保留 '+((step.keepIds||[]).length)+' 张';
+}
+/* 锁定后提示"还剩几张"，未锁定时提示"这一层从几张里选" —— 别在只剩 7 张时还写 15 */
+function locked_n(step,zone){ return zone?(step.keepIds||[]).length:(step.ids||[]).length; }
+
+/* —— 一层完整流程：扫视 → 停下摇号 → 锁住选中区 → 落选淡出 —— */
+function swayPhase(round,scan,L,done){
+  /* 扫视路径 = 本层真实存在的方框（奇数才有中心框）。镜头在框之间**连续滑动**，
+     x / w 都插值 —— 不能一格一格跳，那又是"跟 PPT 一样"。 */
+  const seq=swayBoxes(L);
+  if(!seq.length){ if(done) done(); return; }
+  const m=seq.length, dur=sweepMs();
+  setLensBox(seq[0],false);
+  animate(dur,p=>{
+    /* 1.25 个来回：左→右→左→停在中间附近。结束时镜头不偏袒任何一区，
+       下一步"摇号"才真的是现场选择，而不是"早就停在那一区了"。 */
+    const tri=(1-Math.cos(Math.PI*2*1.25*p))/2;
+    const f=tri*(m-1);
+    const i0=clamp(Math.floor(f),0,m-1), i1=clamp(i0+1,0,m-1), u=f-i0;
+    const a=seq[i0], b=seq[i1];
+    setLens(a.x+(b.x-a.x)*u, a.y+(b.y-a.y)*u,
+            a.w+(b.w-a.w)*u, a.h+(b.h-a.h)*u, false);
+    if(els.modal.classList.contains('hidden')) return;
+    els.hint.textContent='第 '+((scan.pick||0)+1)+' 张 · 镜头看'+ZN[zoneNameOf(L,scan,a.y+a.h/2+(b.y-a.y)*u)];
+  },done);
+}
+function lockPhase(round,step,L,done){
+  const x0=lensX, y0=lensY, w0=lensW, h0=lensH;   /* 镜头扫完停在哪，就从哪开始锁 */
+  paintLayer(round,step,L,true);            /* 它会把镜头直接摆到终点 —— 下面立刻拨回去 */
+  setLens(x0,y0,w0,h0,true);                /* 拨回起点但保持金色，避免闪一帧 */
+  const to=zoneBox(L,(step.ids||[]).length,step.branch);
+  const x1=to?to.x:x0, y1=to?to.y:y0, w1=to?to.w:w0, h1=to?to.h:h0;
+  animate(lockMs(),p=>{
+    const e=easeOut(p);
+    setLens(x0+(x1-x0)*e, y0+(y1-y0)*e, w0+(w1-w0)*e, h0+(h1-h0)*e, true);
+  },()=>{ renderRail(round); setInspector(round); if(done) done(); });
+}
+/* 节奏：扫视占大头（要看得清），锁定和停顿占小头。
+   默认 420 时一层约 0.95 秒 —— 用户明确嫌过 v2 太快，这里整体放慢。 */
+function sweepMs(){ return Math.max(360, settings.speed*1.4); }
+function lockMs(){ return Math.max(160, settings.speed*.55); }
+
+/* ---------- 快速收拢面板 ----------
+   候选还远多于能展示的量时，数轴上每张分不到 1px，画出来是一条没有信息的色带，
+   还要为每张卡建一个 DOM（1975 张 × 十几层 → 一轮要几十秒，看着像"根本没在抽"）。
+   这一段只摇号 + 报数字：抽卡照样在抽，只是不装作看得清。 */
+function showFast(n){
+  els.fastPanel.hidden=false;
+  els.fastNum.textContent=Number(n).toLocaleString('zh-CN');
+  els.fastNote.textContent='收到 '+ANIM_FROM+' 张以内就开始展示镜头';
+  /* 别让上一层的分区框和卡面留在画面上跟面板打架 */
+  setBand(els.bandL,null); setBand(els.bandC,null); setBand(els.bandR,null);
+  Object.keys(curEls).forEach(id=>curEls[id].classList.add('out'));
+}
+function hideFast(){ els.fastPanel.hidden=true; }
+
+/* 实时驱动 */
+function runLive(round){
+  state.mode='live'; state.token++;
+  const token=state.token;
+  const stepMs=settings.speed;
+  const holdMs=Math.max(100, stepMs*.32);
+  setMove(Math.max(.22, stepMs*.42)+'s');
+  const dead=()=> token!==state.token || els.modal.classList.contains('hidden');
+  /* 暂停后「继续抽取」用：按当前候选数决定是继续快进还是继续走镜头 */
+  state.resumeFn=()=>{ if(round.cur.length>ANIM_FROM) fastStep(); else stepOnce(); };
+
+  function settleNow(){
+    const more=settlePick(round);
+    renderRail(round); setInspector(round);
+    if(more) state.timer=setTimeout(()=>{ if(!dead()) stepOnce(); }, holdMs);
+    else finishRound(round);
+  }
+  /* 快速收拢：一步一次真摇号，不画轴、不走镜头。
+     每一步走的都是同一个 collapseStep，所以结果的分布和"慢慢演"完全一致 ——
+     用户看到的只是"前面几千张收得太快看不清"这一段被压缩了。 */
+  function fastStep(){
+    if(dead()) return;
+    if(round.cur.length<=1){ settleNow(); return; }
+    const s=collapseStep(round);
+    renderRail(round); setInspector(round);
+    if(s.leaf){ settleNow(); return; }
+    showFast(round.cur.length);
+    state.timer=setTimeout(round.cur.length>ANIM_FROM?fastStep:enterAnim, FAST_TICK);
+  }
+  function enterAnim(){ hideFast(); stepOnce(); }
+  function stepOnce(){
+    if(dead()) return;
+    if(round.pick>=round.count || !round.remaining.length || !round.cur.length){ finishRound(round); return; }
+    if(round.cur.length<=1){ settleNow(); return; }
+    /* 换下一张时候选会跳回整个剩余池，这里重新判断一次 */
+    if(round.cur.length>ANIM_FROM){ hideFast(); fastStep(); return; }
+    hideFast();
+    const scan=scanStep(round);
+    const L=layoutFor(scan.ids);
+    paintLayer(round,scan,L,null);
+    swayPhase(round,scan,L,()=>{
+      if(dead()) return;
+      const step=collapseStep(round);      /* ★ 镜头停下的这一刻才摇号 */
+      lockPhase(round,step,L,()=>{
+        if(dead()) return;
+        if(step.leaf) settleNow();
+        else state.timer=setTimeout(stepOnce, holdMs);
+      });
+    });
+  }
+  /* 开场：候选够少就把整条轴推出来，太多就直接进快速收拢 */
+  const all=round.cur.map(c=>c.id);
+  if(all.length>ANIM_FROM){
+    els.hint.textContent='第 1 张 · 候选 '+all.length.toLocaleString('zh-CN')+' 张';
+    els.footer.textContent='先从整库里收拢，收到 '+ANIM_FROM+' 张以内再上镜头';
+    showFast(all.length);
+    state.timer=setTimeout(fastStep, Math.max(320, stepMs*.7));
+  }else{
+    paintLayer(round,{ pick:round.pick, leaf:false, ids:all, leftIds:[], centerId:null,
+                       rightIds:[], keepIds:all, branch:null, finalId:null }, layoutFor(all), null);
+    state.timer=setTimeout(stepOnce, Math.max(420, stepMs*.9));
+  }
+}
+
+/* 回放：只走已经记录在 round.layers 里的层，不再摇号。 */
+function runReplay(round, from){
+  state.mode='replay'; state.token++;
+  const token=state.token;
+  const stepMs=Math.max(320, settings.speed*.75);
+  setMove(Math.max(.22, stepMs*.6)+'s');
+  const layers=round.layers||[];
+  if(!layers.length){ finishRound(round); return; }
+  let i=clamp(from||0,0,layers.length-1);
+  const dead=()=> token!==state.token || els.modal.classList.contains('hidden');
+  const show=()=>{ paintLayer(round,layers[i],layoutFor(layers[i].ids||[]),true); renderRail(round,i); setInspector(round,i); };
+  show();
+  const play=()=>{
+    if(dead()) return;
+    if(i<layers.length-1){ i++; show(); state.timer=setTimeout(play,stepMs); }
+    else finishRound(round);
+  };
+  state.timer=setTimeout(play, stepMs);
+}
+
+/* mode: 'live' 实时演算 | 'replay' 回放已记录的层 */
+function openRound(round, mode, from){
+  halt();
+  cancelAutoClose();   /* 用户主动打开了面板（演出 / 重播 / 回看）→ 撤掉待执行的自动关闭 */
+  els.stage.querySelectorAll('.axis-card').forEach(n=>n.remove());
+  els.stage.querySelectorAll('.zone-band').forEach(n=>n.classList.remove('on','win'));
+  curEls={};
+  /* ⚠️ 上一轮的路径节点也要清掉。openRound 只清 stage 的话，
+     新一轮弹层刚打开的那一瞬间会闪出上一轮的节点（rail 要等第一次
+     renderRail 才被重建），看着像"还没开始就抽过了"。 */
+  els.rail.innerHTML='<div class="sub">'+(mode==='replay'?'正在回看已记录的路径…':'镜头扫过之后，这里会出现路径。')+'</div>';
+  els.modal.classList.remove('hidden');
+  els.result.textContent='';
+  hideTip();
+  hideFast();
+  els.resume.hidden=true;
+  state.resumeFn=null;
+  state.round=round;
+  if(mode==='replay') runReplay(round, from);
+  else{
+    /* ⚠️ 同样要重置右栏检查器：statSteps / tree 还是上一轮的数据，
+       新一轮弹层刚打开就显示着上一轮的层数，既误导人也让自动化判据读错。 */
+    setInspector(round);
+    runLive(round);
+  }
+}
+
+/* 跳过动画：把剩下的层一次摇完。每一步仍然走 collapseStep 真摇号，
+   所以"跳过"和"慢慢演"拿到的是同一种随机，只是不等镜头。 */
+function fastForward(round){
+  halt();
+  hideFast();
+  els.resume.hidden=true;
+  let guard=0;
+  while(guard++<400 && round.pick<round.count && round.remaining.length){
+    finishPick(round);
+    if(!settlePick(round)) break;
+  }
+  const last=round.layers[round.layers.length-1];
+  setMove('.2s');
+  if(last) paintLayer(round,last,layoutFor(last.ids||[]),true);
+  finishRound(round);
+}
+
+/* 点路径上的任意一层：暂停并定格到那一层。
+   ⚠️ 只回看，不重摇 —— round.cur 保持摇到的最新状态，
+   点「继续抽取」就从当前候选接着往下摇，不会回退、不会把已摇出的结果改掉。
+   落定之后（state.mode==='done'）点它就是纯回看，本来就没有"继续"这回事。 */
+function pauseAt(round,i){
+  const t=(round.layers||[])[i];
+  if(!t) return;
+  halt(); hideFast();
+  renderRail(round,i); setInspector(round,i);
+  paintLayer(round,t,layoutFor(t.ids||[]),true);
+  if(state.mode==='done'){ els.resume.hidden=true; return; }
+  els.resume.hidden=false;
+  els.footer.textContent='已暂停在第 '+(i+1)+' 层 · 点「继续抽取」接着摇';
+}
+
+function renderRail(round, activeIdx){
+  els.rail.innerHTML='';
+  const layers=round.layers||[];
+  const at=activeIdx==null?layers.length-1:activeIdx;
+  layers.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='rail-node'+(i===at?' active':'');
+    const n=t.leaf?1:((t.ids&&t.ids.length)||0);
+    d.innerHTML='<b>'+(t.leaf?'落到一张卡':n+' 张候选')+'</b>'
+      +'<span>第 '+((t.pick||0)+1)+' 张 · '+(
+        t.leaf?'最终节点'
+        : '上 '+((t.leftIds&&t.leftIds.length)||0)+' · '+((t.centerId)?'中 1 · ':'')+'下 '+((t.rightIds&&t.rightIds.length)||0)
+      )+'</span><br><em>'+(t.leaf?'✓':(t.branch==='center'?'中心':t.branch==='left'?'← 左区':'右区 →'))+'</em>';
+    /* ⚠️ 任何时候都允许点某一层回看（包括正在实时演算时）。
+       以前这里写着「live 时不许点」，理由是怕镜头进度和摇号进度分成两套状态 ——
+       但代价是用户点到没反应，直接当成"点不进去"的 bug。
+       真正的解法不是禁止，而是点下去就**暂停**：定格到那一层，
+       想接着抽就点「继续抽取」，从当前候选往下摇，不回退、不重摇。 */
+    d.addEventListener('click',()=>pauseAt(round,i));
+    els.rail.append(d);
+  });
+}
+function setInspector(round, activeIdx){
+  els.statPool.textContent=round.pool.length;
+  els.statSteps.textContent=(round.layers||[]).length;
+  const layers=round.layers||[];
+  const at=activeIdx==null?layers.length-1:activeIdx;
+  els.tree.innerHTML='';
+  if(!layers.length){
+    els.tree.innerHTML='<div class="sub">镜头扫过之后，这里会出现路径。</div>';
+    els.replay.disabled=true; els.skip.disabled=false; els.reopen.disabled=true;
+    return;
+  }
+  layers.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='tree-node'+(i===at?' active':'');
+    const card=t.finalId?poolGet(round,t.finalId):null;
+    d.innerHTML=t.leaf
+      ? '<b>落点：1 张</b><small>第 '+((t.pick||0)+1)+' 张 · 最终</small><div class="route">'+esc(card?card.text:'')+'</div>'
+      : '<b>'+((t.ids&&t.ids.length)||0)+' 张候选</b><small>第 '+((t.pick||0)+1)+' 张 · 第 '+(i+1)+' 层</small>'
+        +'<div class="route">上 '+((t.leftIds&&t.leftIds.length)||0)+' · 中 '+((t.centerId)?1:0)+' · 下 '+((t.rightIds&&t.rightIds.length)||0)+'</div>';
+    d.addEventListener('click',()=>{
+      /* 弹层盖着整个屏幕，右栏被遮罩挡住根本点不到 —— 所以这里只在弹层关着时生效。
+         演出中想回看某一层，走弹层里的「本轮路径」（那个随时可点）。 */
+      if(!els.modal.classList.contains('hidden')) return;
+      openRound(round,'replay',i);
+    });
+    els.tree.append(d);
+  });
+  els.replay.disabled=(state.mode==='live');
+  els.skip.disabled=false;
+  els.reopen.disabled=false;
+}
+function showTip(e){
+  const p=e.currentTarget;
+  const x=parseFloat(p.style.left)||0, y=parseFloat(p.style.top)||0;
+  const w=els.stage.clientWidth||360, H=els.stage.clientHeight||520;
+  const txt=p.dataset.text||'';
+  /* ⚠️ 手机版：提示放**卡下面**、并夹在舞台内。
+     桌面版是 translate(-50%,-115%) 往上弹 —— 竖排后第一排卡贴着顶边，
+     往上弹会被裁掉；手机又没有 hover，戳一下看不到全文就白戳了。 */
+  const tipW=Math.min(w-20, Math.max(120, Math.min(14,txt.length)*13+28));
+  els.tip.textContent=txt;
+  els.tip.style.maxWidth=tipW+'px';
+  els.tip.style.left=clamp(x, tipW/2+8, Math.max(tipW/2+8, w-tipW/2-8))+'px';
+  const th=els.tip.offsetHeight||56;
+  const below=y+p.offsetHeight/2+8;
+  const top=(below+th>H-6) ? (y-p.offsetHeight/2-8-th) : below;
+  els.tip.style.top=clamp(top, 6, Math.max(6, H-6-th))+'px';
+  els.tip.classList.add('on');
+}
+function hideTip(){ els.tip.classList.remove('on'); }
+
+/* ---------- 逐条落地 ----------
+   一轮摇出几张，就分成几条消息发出去，**不再把几张拼成同一条**。
+   抽几张仍然是每轮现摇的（rollCount），这里只改"怎么发"，不动"抽几张"。
+
+   ⚠️ 落地刻意做成一张一条、中间带"正在打字"：一次 render 把四个气泡同时冒出来，
+   看着仍像"一口气说了四句"；分开落地才读得出"TA 一句一句回过来"。
+   ⚠️ 这条链子**不能**挂在 state.timer 上 —— closeCloud 里 halt() 会 clearTimeout(state.timer)，
+   弹层一关消息就永远发不出来、库里却已经标了命中。所以用独立的 dripTimer。 */
+const DRIP_GAP=680;
+let dripTimer=null;
+function stopDrip(){ if(dripTimer){ clearTimeout(dripTimer); dripTimer=null; } state.typing=false; }
+function dripDeliver(cards, roundId){
+  stopDrip();
+  let i=0;
+  const t0=nowTs();
+  const step=()=>{
+    if(i>=cards.length){ dripTimer=null; state.typing=false; renderMessages(); save(); return; }
+    const c=cards[i++];
+    /* 时间戳按张错开：四条全落在同一秒里会显得很假 */
+    state.messages.push({side:'other', text:c.text, ts:t0+(i-1)*1000, roundId:roundId});
+    const more=i<cards.length;
+    state.typing=more;
+    save(); renderMessages();
+    if(more) dripTimer=setTimeout(step, DRIP_GAP);
+  };
+  step();
+}
+function commitRound(round){
+  if(round.committed) return;
+  round.committed=true;
+  const cards=roundTexts(round);
+  if(!cards.length) return;
+  markUsed(round.picks);
+  state.hitIds=new Set(round.picks);
+  save(); renderLibrary(); renderHealth();
+  dripDeliver(cards, round.id);
+}
+
+/* 演完自动关弹层。760ms 是"够看清结果栏里那句话、又不至于让人干等"的折中；
+   这期间用户若点了「重播路径 / 回看上一轮」，openRound() 会把它取消掉。 */
+const AUTO_CLOSE_MS=760;
+let autoCloseTimer=null;
+function cancelAutoClose(){ if(autoCloseTimer){ clearTimeout(autoCloseTimer); autoCloseTimer=null; } }
+/* 一轮演完：把结果写进结果栏并落进聊天 */
+function finishRound(round){
+  clearTimeout(state.timer);
+  /* ⚠️ 先取"这一轮是实时演算还是回放" —— 下一行就把 mode 改成 'done' 了。 */
+  const wasReplay = state.mode==='replay';
+  /* 一轮演完就转成"已落定"：此刻起 round.layers 只是一份录像，
+     重播 / 回看都不许再摇号，否则会把已经发出去的回复改掉。 */
+  state.mode='done';
+  hideFast();
+  els.resume.hidden=true;
+  state.resumeFn=null;
+  els.result.textContent=roundTexts(round).map(c=>c.text).join('  ');
+  els.footer.textContent='抽取完成';
+  els.hint.textContent='落定 '+round.picks.length+' 张';
+  els.replay.disabled=false;
+  setInspector(round);
+  commitRound(round);
+  /* 动画播完自动收掉动画面板：用户要看的是"抽的过程"，不是停在一个面板上还要自己点 ×。
+     ⚠️ 只在**实时演算**（我发一条消息触发的那一轮）自动收。
+        「回看上一轮路径 / 重播」是用户主动打开来细看的，自动关掉等于把要看的东西抢走。
+     ⚠️ 这里用的是独立的 autoCloseTimer，不是 state.timer —— halt() 会清 state.timer。
+     关面板走的就是 × 那条路（halt + 已落定则不重复 commit），drip 用的是独立 dripTimer，
+     所以面板一关，TA 的回复照样一条条落进聊天。 */
+  cancelAutoClose();
+  if(!wasReplay) autoCloseTimer=setTimeout(()=>{ autoCloseTimer=null; $('#closeCloud').click(); }, AUTO_CLOSE_MS);
+}
+
+/* ---------------- 发送 ---------------- */
+function send(){
+  const text=els.input.value.trim();
+  if(!text||state.typing) return;
+  if(!state.cards.length){ libToast('字卡库是空的，TA 没有话可说。先加一张。'); return; }
+  state.messages.push({side:'me', text, ts:nowTs()});
+  els.input.value=''; autoGrow();
+  showTyping(true);
+  const delay=520+Math.random()*760;
+  setTimeout(()=>{
+    showTyping(false);
+    if(settings.countMin===0){
+      const c=nextInOrder();
+      if(c){
+        markUsed([c.id]);
+        state.hitIds=new Set([c.id]);
+        state.messages.push({side:'other', text:c.text, ts:nowTs()});
+        save(); renderMessages(); renderLibrary(); renderHealth();
+      }
+    }else{
+      /* ⚠️ 张数是**这一轮现摇**的（rollCount），不是建轮前就定好的常量 ——
+         和 collapseStep 同一个原则：结果必须现场产生。
+         摇出来多少张，这一轮就演多少张；回放走 round.layers 录像，不会重摇。 */
+      const want=rollCount(state.cards.length);
+      const round=createRound(state.cards, want);
+      state.rounds[round.id]=round;
+      state.roundOrder.push(round.id);
+      if(state.roundOrder.length>60) delete state.rounds[state.roundOrder.shift()];
+      save();
+      openRound(round,'live');
+    }
+  }, delay);
+}
+function autoGrow(){
+  els.input.style.height='auto';
+  els.input.style.height=Math.min(110, els.input.scrollHeight)+'px';
+}
+
+/* ---------------- 事件 ---------------- */
+$('#addCardForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=$('#newCardInput').value.trim();
+  if(!v) return;
+  addCards([v]);
+  $('#newCardInput').value='';
+  libToast(state.search?('已添加，但当前有搜索条件，新卡可能不在列表里。'):'已添加一张。');
+});
+els.search.addEventListener('input',e=>{ state.search=e.target.value; renderLibrary(); });
+document.querySelectorAll('.chip[data-sort]').forEach(b=>{
+  b.addEventListener('click',()=>{
+    state.sort=b.dataset.sort;
+    document.querySelectorAll('.chip[data-sort]').forEach(x=>x.classList.toggle('on',x===b));
+    renderLibrary();
+  });
+});
+els.list.addEventListener('click',e=>{
+  const t=e.target.closest('button');
+  if(t && t.dataset.save){
+    const ta=els.list.querySelector('textarea[data-edit="'+t.dataset.save+'"]');
+    const v=ta?ta.value.trim():'';
+    if(!v){ libToast('内容不能为空。留空等于删掉这张。'); return; }
+    const c=state.cards.find(x=>x.id===t.dataset.save);
+    if(!c){ state.editingId=null; renderLibrary(); return; }
+    if(state.cards.some(x=>x.id!==c.id&&x.text===v)){
+      libToast('库里已经有同样内容的一张了，换个说法。');
+      return;   /* 留在编辑态，别把用户写的东西弄丢 */
+    }
+    c.text=v.slice(0,120);
+    /* ⚠️ 必须先清 editingId 再渲染：否则重渲染时这张卡仍走「编辑态分支」，
+       渲出一个塞着旧值的 textarea，DOM 就和数据脱节了。 */
+    state.editingId=null;
+    save(); renderLibrary(); renderHealth();
+    libToast('已改。');
+    return;
+  }
+  if(t && t.dataset.cancel){ state.editingId=null; renderLibrary(); return; }
+  if(t && t.dataset.edit){ state.editingId=t.dataset.edit; renderLibrary(); return; }
+  if(t && t.dataset.delete){
+    const id=t.dataset.delete;
+    const c=state.cards.find(x=>x.id===id);
+    if(!c) return;
+    if(!confirm('删掉这张字卡？\n\n「'+c.text+'」\n\n删了就找不回来了。')) return;
+    state.cards=state.cards.filter(x=>x.id!==id);
+    save(); renderLibrary(); renderHealth();
+    return;
+  }
+});
+els.list.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){
+    const btn=els.list.querySelector('button[data-save]');
+    if(btn){ e.preventDefault(); btn.click(); }
+  }
+  if(e.key==='Escape'){ state.editingId=null; renderLibrary(); }
+});
+
+$('#bulkAddBtn').addEventListener('click',()=>{
+  const lines=$('#bulkInput').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){ libToast('先粘点东西进来。'); return; }
+  const n=addCards(lines);
+  libToast(n?('成功添加 '+n+' 条，重复的和空行已跳过。'):('没有新增：'+lines.length+' 条全部已在库里。'));
+  if(n) $('#bulkInput').value='';
+});
+$('#exportBtn').addEventListener('click',exportJson);
+$('#importBtn').addEventListener('click',()=>$('#importFile').click());
+$('#importFile').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(f) importJson(f);
+  e.target.value='';
+});
+
+$('#composer').addEventListener('submit',e=>{ e.preventDefault(); send(); });
+els.input.addEventListener('input',autoGrow);
+els.input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+/* ---------- 手机版的抽屉：字卡库 / 设置 ----------
+   两个 aside 在 CSS 里是固定定位、默认移出屏幕的抽屉，
+   这里只管开关 class；点背景或抽屉里的 × 收起。 */
+(function(){
+  const body=document.body;
+  const close=()=>body.classList.remove('sheet-lib','sheet-rail');
+  $('#openLib').addEventListener('click',()=>{
+    const on=body.classList.contains('sheet-lib');
+    close(); if(!on) body.classList.add('sheet-lib');
+  });
+  $('#openRail').addEventListener('click',()=>{
+    const on=body.classList.contains('sheet-rail');
+    close(); if(!on) body.classList.add('sheet-rail');
+  });
+  $('#backdrop').addEventListener('click',close);
+  document.querySelectorAll('.sheet-x').forEach(b=>b.addEventListener('click',close));
+  /* 点舞台空白处收起字卡全文提示 */
+  els.stage.addEventListener('click',ev=>{ if(ev.target===els.stage) hideTip(); });
+})();
+
+$('#clearChatBtn').addEventListener('click',()=>{
+  if(!state.messages.length) return;
+  if(!confirm('清空当前 '+state.messages.length+' 条对话？\n\n字卡库不受影响。')) return;
+  stopDrip();
+  state.messages=[]; state.hitIds.clear();
+  save(); renderMessages(); renderLibrary();
+});
+function countLabel(v){ return v===0 ? '按顺序' : (v+' 张'); }
+/* 设置区显示的是**区间**（"1 ~ 4 张"），不是某一个固定值。 */
+function rangeLabel(){
+  return settings.countMin===0 ? '按顺序'
+       : (settings.countMin===settings.countMax ? countLabel(settings.countMin)
+                                                : settings.countMin+' ~ '+settings.countMax+' 张');
+}
+function syncCountUI(){
+  $('#rngCount').value=settings.countMin;
+  $('#rngMax').value=settings.countMax;
+  $('#valCount').textContent=rangeLabel();
+  $('#valMax').textContent=countLabel(settings.countMax);
+}
+$('#rngCount').addEventListener('input',e=>{
+  settings.countMin=Number(e.target.value);
+  /* 拉下限会把上限压下去：min<=max 是区间能存在的唯一前提，
+     否则会出现"最少 5 张、最多 2 张"这种空区间。 */
+  if(settings.countMax<settings.countMin) settings.countMax=settings.countMin;
+  normRange(); syncCountUI(); save();
+});
+$('#rngMax').addEventListener('input',e=>{
+  settings.countMax=Number(e.target.value);
+  if(settings.countMax<settings.countMin) settings.countMin=settings.countMax;
+  normRange(); syncCountUI(); save();
+});
+$('#rngSpeed').addEventListener('input',e=>{
+  settings.speed=Number(e.target.value);
+  $('#valSpeed').textContent=speedLabel(settings.speed);
+  save();
+});
+$('#closeCloud').addEventListener('click',()=>{
+  halt();
+  if(state.round && !state.round.committed) commitRound(state.round);
+  els.modal.classList.add('hidden');
+  hideTip();
+});
+els.modal.addEventListener('click',e=>{ if(e.target===els.modal) $('#closeCloud').click(); });
+/* 「继续抽取」：从暂停处接着往下摇。走的还是同一个 collapseStep，
+   所以接着摇出来的结果和一路演到底属于同一个分布。 */
+els.resume.addEventListener('click',()=>{
+  els.resume.hidden=true;
+  if(state.resumeFn) state.resumeFn();
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!els.modal.classList.contains('hidden')) $('#closeCloud').click(); });
+els.skip.addEventListener('click',()=>{
+  if(!state.round) return;
+  if(state.mode==='replay'){
+    /* 回放模式没有"剩下要摇的层"，直接跳到已记录的最后一层 */
+    halt();
+    const L=state.round.layers||[];
+    if(L.length){ setMove('.2s'); paintLayer(state.round, L[L.length-1], layoutFor(L[L.length-1].ids||[]), true); }
+    els.result.textContent=roundTexts(state.round).map(c=>c.text).join('  ');
+    els.footer.textContent='已跳过动画';
+    return;
+  }
+  fastForward(state.round);
+});
+els.replay.addEventListener('click',()=>{
+  if(!state.round) return;
+  if(state.mode==='live') return;        /* 还在演的时候不许切回放，会打断摇号 */
+  openRound(state.round,'replay',0);
+});
+/* 从检查器回看最近一轮：走已记录的层，commitRound 幂等，所以不会重复发消息 */
+els.reopen.addEventListener('click',()=>{
+  const id=state.roundOrder[state.roundOrder.length-1];
+  const r=id?state.rounds[id]:null;
+  if(!r) return;
+  openRound(r,'replay',0);
+});
+
+/* 改窗口大小后按当前那一层重排：宽度变了 → 轴要重新等分，卡面宽度也要重算 */
+let rz=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(rz);
+  rz=setTimeout(()=>{
+    const lp=state.lastPaint;
+    if(!lp || !state.round || els.modal.classList.contains('hidden')) return;
+    setMove('.2s');
+    const L=layoutFor(lp.step.ids||[]);
+    paintLayer(lp.round, lp.step, L, lp.locked);   /* locked 时它会顺带把镜头摆回选中区 */
+  },160);
+});
+
+/* ---------------- 启动 ---------------- */
+load();
+/* 客户字卡库直接内嵌在源码里（见 IMPORTED_LIBRARY），**首次打开就灌进去** ——
+   交付物应该是"客户打开就是一整库字卡"，而不是"客户先自己导一遍文件"。
+
+   ⚠️ 灌不灌、怎么灌，必须看老存档里已经有什么，否则会**覆盖客户自己的数据**：
+     · 空库            → 全量灌入
+     · 还是最初那 15 张示例语料（LEGACY_SEED）→ 全量替换掉。客户从没自定义过，
+                         留着那 15 条反而是假数据（"我不是从你给的库抽的"）。
+     · 已经有别的内容（自己加过 / 已经导过）→ **只补不覆盖**，缺的追加、去重。
+   seeded 标记保证只判一次：客户自己清空字卡库后重开，不会被塞回来。 */
+if(!state.seeded){
+  const has=state.cards.length>0;
+  const stillLegacy=has && state.cards.length===LEGACY_SEED.length
+    && LEGACY_SEED.every(t=>state.cards.some(c=>c.text===t));
+  if(!has || stillLegacy){
+    state.cards=IMPORTED_LIBRARY.map(t=>({id:uid(), text:t, used:0, lastUsedAt:0}));
+  }else{
+    const have=new Set(state.cards.map(c=>c.text));
+    IMPORTED_LIBRARY.forEach(t=>{ if(!have.has(t)) state.cards.push({id:uid(), text:t, used:0, lastUsedAt:0}); });
+  }
+  state.seeded=true;
+  save();
+}
+function speedLabel(v){ return v<=260?'很快':v<=520?'适中':v<=780?'偏慢':'很慢'; }
+$('#rngSpeed').value=settings.speed;
+normRange(); syncCountUI();
+$('#valSpeed').textContent=speedLabel(settings.speed);
+els.headSub.textContent='回复从 '+state.cards.length+' 张可见字卡中现场抽出';
+renderLibrary(); renderMessages(); renderHealth();
+/* ⚠️ 刷新后必须让「回看上一轮路径」可用：这个按钮的 enabled 状态原来只在 setInspector()
+   里被打开，而 setInspector 只在"演一轮 / 回放"时才会被调用 —— 于是刷新之后按钮永远是灰的，
+   存档里的历史路径根本点不进去，用户看着就像"历史全丢了"（既有缺陷，2026-10-05 一并修）。 */
+els.reopen.disabled=!state.roundOrder.length;
+})();
+</script>
+</body>
+</html>
