@@ -129,10 +129,74 @@ body.sheet-lib .backdrop,body.sheet-rail .backdrop{opacity:1;pointer-events:auto
 .bubble{padding:12px 15px;border-radius:16px 16px 16px 4px;background:#fdf6ef;border:1px solid #eadfd2;line-height:1.55;font-size:14px;white-space:pre-wrap;word-break:break-word}
 .me .bubble{background:#dceaf1;border-color:#a9c9d8;border-radius:16px 16px 4px 16px}
 .msg-meta{font-size:10px;color:var(--dim);margin:0 5px 3px;white-space:nowrap}
+/* ---------- 抽卡方式切换 ---------- */
+.mode-switch{display:flex;flex-wrap:wrap;gap:6px;margin:11px 0 8px}
+.mode-switch .chip{font-size:11.5px;padding:5px 10px}
+.mode-switch .chip.on{background:var(--cyan);border-color:var(--cyan);color:#fff;font-weight:700}
+.mode-desc{font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:5px}
+.mode-note{font-size:10.5px;color:var(--dim);line-height:1.5}
+.mode-note b{color:#8b7d70}
+/* 预定对照的"未来队列"（⚠️ 只在非实验模式下露出来 —— 实验模式一露就等于告诉你在用哪种） */
+.queue-wrap{margin-top:9px}
+.queue-box{margin-top:7px;max-height:230px;overflow:auto;padding:9px 11px;background:#fffdf9;
+  border:1px solid var(--line);border-radius:10px;font-size:11px;line-height:1.55;color:var(--muted)}
+.queue-round{padding:5px 0;border-bottom:1px dashed var(--line)}
+.queue-round:last-child{border-bottom:0}
+.queue-round b{color:var(--cyan);font-weight:600;margin-right:5px}
+.queue-box .queue-head{color:var(--dim);font-size:10.5px;margin-bottom:3px}.mode-note b{color:#8b7d70}
+/* ---------- 牌桌（洗牌法切牌 / 盲抽 5 张） ---------- */
+.card-table{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-start;padding:2px 0 6px;animation:dealIn .3s ease both}
+.card-table.is-blind{gap:8px}
+.tcard{position:relative;width:84px;height:116px;border-radius:12px;border:1px solid var(--line-2);
+  background:transparent;padding:0;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease}
+.tcard .tback,.tcard .tface{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  border-radius:11px;font-size:11.5px;line-height:1.35;text-align:center;padding:8px;overflow-wrap:anywhere}
+.tcard .tback{background:linear-gradient(150deg,#eef4f8,#dfeaf2 60%,#e9f1f6);border:1px solid rgba(91,147,176,.34)}
+.tcard .tback::after{content:"✦";color:rgba(91,147,176,.5);font-size:18px}
+.tcard .tface{background:linear-gradient(180deg,#fffdf9,#f7f0e7);border:1px solid rgba(91,147,176,.3);
+  color:var(--text);animation:flipIn .22s ease both}
+.card-table.is-blind .tcard:not([disabled]){cursor:pointer}
+.card-table.is-blind .tcard:not([disabled]):hover{transform:translateY(-4px);box-shadow:0 10px 18px rgba(122,101,80,.16)}
+.tcard.picked{outline:2px solid var(--gold);outline-offset:2px}
+.tcard[disabled]{cursor:default}
+.table-tip{flex-basis:100%;font-size:10.5px;color:var(--dim)}
+@keyframes dealIn{from{transform:translateY(9px);opacity:0}to{transform:none;opacity:1}}
+@keyframes flipIn{from{transform:rotateY(-88deg);opacity:.15}to{transform:rotateY(0);opacity:1}}
+/* 聊天区「载入更早」：存档是全量，DOM 只画窗口内的，这一条是往上翻的入口 */
+.more-bar{display:flex;align-items:center;gap:9px;padding:2px 0 8px;flex:none}
+.more-bar .chip{font-size:11px}
+.more-bar span{font-size:10px;color:var(--dim)}
+/* 聊天区「载入更早」：存档是全量，DOM 只画窗口内的，这一条是往上翻的入口 */
+.more-bar{display:flex;align-items:center;gap:9px;padding:2px 0 8px;flex:none}
+.more-bar .chip{font-size:11px}
+.more-bar span{font-size:10px;color:var(--dim)}
+
 .typing{color:var(--muted);font-size:12px;display:flex;gap:5px;align-items:center}
 .typing span{width:5px;height:5px;background:var(--cyan);border-radius:50%;animation:bounce 1s infinite}
 .typing span:nth-child(2){animation-delay:.15s}
 .typing span:nth-child(3){animation-delay:.3s}
+
+/* ---------- 每轮评分 ---------- */
+.rate-card{margin:7px 0 3px;padding:11px 12px;background:#fffdf9;border:1px dashed var(--line-2);border-radius:13px}
+.rate-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:9px}
+.rate-head b{font-size:12.5px;color:var(--text);font-weight:600}
+.rate-head span{font-size:10.5px;color:var(--dim);flex:none}
+.rate-btns{display:flex;flex-wrap:wrap;gap:4px}
+.rate-btn{width:32px;height:32px;border:1px solid var(--line-2);background:#fff;color:#6b6058;border-radius:9px;font-size:12.5px;font-variant-numeric:tabular-nums;padding:0;line-height:1}
+.rate-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.rate-btn.on{background:var(--cyan);border-color:var(--cyan);color:#fff;font-weight:700}
+.rategroup{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.rategroup h3{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:11px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rategroup h3 .mini-btn{text-transform:none;letter-spacing:0}
+.rate-empty{font-size:11px;color:var(--muted);line-height:1.6}
+.rstat-line{font-size:10.5px;color:var(--muted);margin:-6px 0 10px}
+.rstat-sep{margin:11px 0 6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.rstat-row{display:flex;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+.rstat-row span{flex:none;color:#6b6058}
+.rstat-row b{color:var(--gold);font-variant-numeric:tabular-nums;font-size:13px}
+.rstat-row em{margin-left:auto;font-style:normal;font-size:10px;color:var(--dim)}
+.rstat-row.empty{opacity:.42}
+.rstat-row.empty b{color:var(--dim)}
 @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}
 
 .composer{display:flex;gap:8px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--line);flex:none}
@@ -355,11 +419,33 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
     <div class="eyebrow">Round inspector</div>
     <h2>抽取路径</h2>
     <p>这里显示最近一轮的候选数量变化。点击节点可以回看那一层。</p>
+    <div class="setgroup" style="margin-top:14px;padding-top:0;border-top:0">
+      <h3>抽卡方式</h3>
+      <div class="mode-switch" id="modeSwitch">
+        <button class="chip on" data-mode="halve" data-slot="0" type="button">分半收拢</button>
+        <button class="chip" data-mode="shuffle" data-slot="1" type="button">洗牌发牌</button>
+        <button class="chip" data-mode="blind" data-slot="2" type="button">盲抽自选</button>
+        <button class="chip" data-mode="control" data-slot="3" type="button">预定对照</button>
+        <button class="chip" data-mode="queue" data-slot="4" type="button">预排队列</button>
+        <button class="chip" id="expToggle" type="button" aria-pressed="false">实验模式（盲测）</button>
+      </div>
+      <div class="mode-desc" id="modeDesc">候选一层层筛掉，镜头扫过之后留下它</div>
+      <div class="mode-note" id="modeNote">五种方式的<b>聊天记录和评分各自独立</b>，字卡共用。<br>
+        「预定对照」和「盲抽自选」抽出来的都是均匀的 N 张，差别只在盲抽多了<b>你点一张</b> —— 所以拿它当盲抽的对照。</div>
+      <div class="queue-wrap" id="queueWrap" hidden>
+        <button class="chip" id="queueToggle" type="button">看一眼队列</button>
+        <div class="queue-box" id="queueBox" hidden></div>
+      </div>      <div class="mode-note" id="modeNote">四种方式的<b>聊天记录和评分各自独立</b>，字卡共用。</div>
+    </div>
     <div class="round-stats">
       <div class="stat"><b id="statPool">—</b><span>候选字卡</span></div>
       <div class="stat"><b id="statSteps">—</b><span>收缩层数</span></div>
     </div>
     <div class="tree" id="tree"><div class="sub">发送一条消息后，这里会出现路径。</div></div>
+    <div class="rategroup" id="rateStats">
+      <h3>评分统计</h3>
+      <div class="rate-empty">还没有评分。梦角回完一轮，在聊天里给它打个 0~10 分，这里就会长出数据。</div>
+    </div>
     <div class="setgroup">
       <h3>抽取设置</h3>
       <div class="setrow">
@@ -1100,6 +1186,37 @@ const state = {
   messages: [],       /* {side:'me'|'other', text, ts, roundId?} */
   rounds: {},         /* roundId -> round */
   roundOrder: [],
+  /* 每轮评分：{id, rid, score(0~10), ts, me, ta}。**独立于轮次存档** ——
+     轮次只留最近一条（见 HANDOFF §8.1），而评分要长期累积做统计，
+     所以自带一份内容快照，轮次被清掉也不影响统计。 */
+  ratings: [],
+  ratingFor: null,    /* 正在等打分的那一轮 roundId（运行时状态，不进存档） */
+  /* ⚠️ 不限历史了（存档换到 IDB），但**不能把几万条消息一次塞进 DOM** ——
+     那会直接把页面冻住。所以存档留全量，界面只渲染最近 msgWindow 条，
+     顶部给一个「载入更早」。 */
+  msgWindow: 150,
+  /* ---------------- 四种抽卡方式 ----------------
+     ⚠️ 字段叫 drawMode 不叫 mode —— `state.mode` 已经被动画状态占了（live/replay/done），
+     同名会互相覆盖。
+     实现手法是**引用交换**：state.messages / rounds / roundOrder / ratings / pending
+     永远指向"当前这种方式"的那一份；切模式时把旧的存回 byMode、把新的装上去。
+     于是现有全部渲染与存档代码一行都不用改。字卡（state.cards）是**共享**的。 */
+  drawMode: 'halve',
+  byMode: {},
+  pending: null,   /* 盲抽摆好还没点的那手牌（跟着模式走，刷新也不丢） */
+  /* 预定对照的"未来队列"：一次排好往后约 100 张卡（25~50 轮）的结果，每发一条取一个，
+     取完再排下一批。⚠️ 它也必须**跟着模式走**（见 byMode），否则切模式会串。 */
+  queue: [],
+  table: null,     /* 洗牌法的牌桌（纯运行时，演完就收） */
+  /* ---------------- 实验模式（盲测） ----------------
+     目的：打分时别被"我知道这是哪个方法"带偏。开着的时候——
+       · 四个按钮的名字变成 **1~4**，槽位与真实方式是**洗牌后的固定映射**
+         （`slot` 是"槽位 i → 真实方式"的数组；只洗一次，刷新也不变，
+          否则评分会串到别的方法上去）。
+       · **进入实验模式之前的聊天一律不显示**（`startTs` 之前的消息）——
+         各个方式自己的旧聊天也要隐，否则一眼就认出来"这是分半的日志"。
+     关掉实验模式就恢复真名与全部旧记录；评分本来就按真实方式存着，切过去就能分别看统计。 */
+  exp: { on:false, slot:null, startTs:0 },
   search: '',
   sort: 'order',
   editingId: null,
@@ -1153,6 +1270,9 @@ const els = {
   resume:$('#resumeBtn'),
   fastPanel:$('#fastPanel'), fastNum:$('#fastNum'), fastNote:$('#fastNote'),
   health:$('#health'), healthNote:$('#healthNote'),
+  rateStats:$('#rateStats'),
+  modeSwitch:$('#modeSwitch'), modeDesc:$('#modeDesc'), modeNote:$('#modeNote'), expToggle:$('#expToggle'),
+  queueWrap:$('#queueWrap'), queueToggle:$('#queueToggle'), queueBox:$('#queueBox'),  modeSwitch:$('#modeSwitch'), modeDesc:$('#modeDesc'), modeNote:$('#modeNote'), expToggle:$('#expToggle'),
   libToast:$('#libToast'), headSub:$('#headSub')
 };
 
@@ -1183,24 +1303,311 @@ function shuffle(items, rand){
   return a;
 }
 
-/* ---------------- 存档 ---------------- */
-function load(){
+/* ---------------- 每轮评分：把"感觉"做成数据 ----------------
+   一轮 = 我发一条消息 + 梦角这一轮的所有回复（条数每轮都不同，所以按"轮"评分，
+   不是按条评分）。梦角把这一轮发完（drip 落完）后，消息流末尾出现一张打分卡，
+   给这一轮打 0~RATE_MAX 分；打过的可以改。 */
+const RATE_MAX=10;
+/* ⚠️ 换 IndexedDB 后容量按 GB 算，这个上限不再是"够不够放"的问题，
+   只留作**跑飞的保险丝**（正常做实验根本到不了 2 万轮）。 */
+const RATINGS_CAP=20000;
+/* 聊天界面每次「载入更早」多画多少条（存档是全量，DOM 只画窗口内的） */
+const MSG_STEP=150;
+/* 时段按**每 2 小时**一组，共 12 组（客户 2026-10-06 要求：比"深夜/上午/下午/晚上"再细一档）。
+   ⚠️ 空组也照样列出来 —— 只看有数据的那几组会看不出"哪些时段我根本没聊"，
+   而那恰恰是这份统计要回答的问题之一。空组灰显。 */
+const PERIODS=Array.from({length:12},(_,i)=>({
+  k:String(i*2).padStart(2,'0')+'–'+String(i*2+2).padStart(2,'0'), a:i*2, b:i*2+2
+}));
+
+function periodOf(ts){
+  const h=new Date(ts).getHours();
+  const s=Math.floor(h/2)*2;
+  return String(s).padStart(2,'0')+'–'+String(s+2).padStart(2,'0');
+}
+function dayKey(ts){
+  const d=new Date(ts), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function ratingOf(rid){ return state.ratings.find(r=>r.rid===rid)||null; }
+function ratingsSorted(){ return visibleRatings().slice().sort((a,b)=>a.ts-b.ts); }
+/* 描述统计。方差用**总体方差**（除以 n）——这些评分就是全部样本，
+   不是从更大总体里抽的样，用样本方差（n-1）会把口径说歪。 */
+function statOf(list){
+  const n=list.length;
+  if(!n) return null;
+  const mean=list.reduce((a,r)=>a+r.score,0)/n;
+  const vari=list.reduce((a,r)=>a+(r.score-mean)*(r.score-mean),0)/n;
+  const scores=list.map(r=>r.score);
+  return { n, mean, vari, sd:Math.sqrt(vari), min:Math.min(...scores), max:Math.max(...scores) };
+}
+function fmt1(v){ return (Math.round(v*10)/10).toFixed(1); }
+/* 这一轮的"我"和 TA 的文本。⚠️ 我发的那条消息没有 roundId（只有 TA 的回复有），
+   所以要从这一轮第一条回复往前找最近的一条我方消息。 */
+function roundMsgs(rid){
+  const i=state.messages.findIndex(m=>m.roundId===rid);
+  if(i<0) return { me:'', ta:[] };
+  let me='';
+  for(let k=i-1;k>=0;k--){ if(state.messages[k].side==='me'){ me=state.messages[k].text; break; } }
+  return { me, ta:state.messages.filter(m=>m.roundId===rid).map(m=>m.text) };
+}
+function rateRound(pending, score){
+  score=clamp(Math.round(score),0,RATE_MAX);
+  const ts=nowTs();
+  const r=ratingOf(pending.rid);
+  if(r){ r.score=score; r.ts=ts; }      /* 已经打过 → 改分，不新增一条 */
+  else{
+    state.ratings.push({ id:uid('rate'), rid:pending.rid, score, ts,
+      me:String(pending.me||'').slice(0,120), ta:String((pending.ta||[]).join(' | ')).slice(0,200) });
+    if(state.ratings.length>RATINGS_CAP) state.ratings.splice(0, state.ratings.length-RATINGS_CAP);
+  }
+  /* ⚠️ 刻意**不清** ratingFor：打完卡片留在原地显示"已评 X 分"，点别的数字还能改。
+     它要等到"我发下一条消息"时才收起（一轮一张卡）。 */
+  save(); renderMessages(); renderRatingStats();
+}
+/* 刷新后把最近一轮的评分卡补回来 —— 评过的也补（显示"已评 X 分"），
+   不然一刷新打分入口就没了，用户会以为功能坏了。 */
+function restoreRatingPrompt(){
+  const rid=state.roundOrder[state.roundOrder.length-1];
+  if(!rid) return;
+  const r=state.rounds[rid];
+  if(!r||!r.committed) return;
+  const rm=roundMsgs(rid);
+  if(!rm.ta.length) return;
+  state.ratingFor={ rid, me:rm.me, ta:rm.ta };
+}
+function clearRatings(){
+  /* ⚠️ 实验模式下只清"本次实验"的（把各方式截回进入时的基线），实验之前的评分一条不动 ——
+     客户对"顺手把数据删了"零容忍。 */
+  if(expOn()){
+    const marks=state.exp.ratingFrom||{};
+    let n=0;
+    DRAW_MODES.forEach(m=>{
+      const b=state.byMode[m.k]; if(!b) return;
+      const keep=marks[m.k]||0;
+      if(b.ratings.length>keep){ n+=b.ratings.length-keep; b.ratings.length=keep; }
+    });
+    if(!n){ libToast('本次实验还没有评分。'); return; }
+    save(); renderRatingStats(); renderMessages();
+    libToast('本次实验的 '+n+' 条评分已清空（实验之前的评分没动）。');
+    return;
+  }
+  if(!state.ratings.length) return;
+  if(!confirm('清空全部 '+state.ratings.length+' 条评分记录？\n\n聊天记录和字卡库不受影响。')) return;
+  state.ratings=[]; save(); renderRatingStats(); renderMessages();
+}
+
+/* 打分卡：跟在消息流末尾 */
+function ratingCardEl(pending){
+  const cur=ratingOf(pending.rid);
+  const wrap=document.createElement('div');
+  wrap.className='rate-card'; wrap.dataset.rid=pending.rid;
+  const head=cur
+    ? '<div class="rate-head"><b>本轮已评 '+cur.score+' 分</b><span>点数字可改</span></div>'
+    : '<div class="rate-head"><b>这一轮梦角回得怎么样？</b><span>0 ~ '+RATE_MAX+' 分</span></div>';
+  let btns='';
+  for(let i=0;i<=RATE_MAX;i++) btns+='<button type="button" class="rate-btn'+((cur&&cur.score===i)?' on':'')+'" data-rate="'+i+'" aria-label="打 '+i+' 分">'+i+'</button>';
+  wrap.innerHTML=head+'<div class="rate-btns">'+btns+'</div>';
+  return wrap;
+}
+/* 检查器里的统计面板 */
+function renderRatingStats(){
+  const box=els.rateStats; if(!box) return;
+  const all=ratingsSorted(), s=statOf(all);
+  if(!s){
+    box.innerHTML='<h3>评分统计</h3><div class="rate-empty">「'+esc(expOn()?('方式 '+(slotOf(state.drawMode)+1)):drawModeInfo().name)+'」还没有评分。梦角回完一轮，在聊天里给它打个 0~'+RATE_MAX+' 分，这里就会长出数据。</div>';
+    return;
+  }
+  const row=(k,v,n)=>'<div class="rstat-row"><span>'+esc(k)+'</span><b>'+v+'</b><em>'+(n==null?'':n+' 轮')+'</em></div>';
+  const byP=PERIODS.map(p=>{
+    const st=statOf(all.filter(r=>periodOf(r.ts)===p.k));
+    return st?row(p.k+' 点', fmt1(st.mean), st.n)
+             :'<div class="rstat-row empty"><span>'+p.k+' 点</span><b>—</b><em>0 轮</em></div>';
+  }).join('');
+  const days={};
+  all.forEach(r=>{ const k=dayKey(r.ts); (days[k]=days[k]||[]).push(r); });
+  const byD=Object.keys(days).sort().slice(-7).reverse()
+    .map(k=>{ const st=statOf(days[k]); return st?row(k.slice(5), fmt1(st.mean), st.n):''; }).join('');
+  /* 趋势：最近 5 轮 vs 全部 —— 只报差值，不做显著性（样本太小，别装成结论） */
+  const last5=all.slice(-5), s5=statOf(last5);
+  const trend=(all.length>=3&&s5)?'最近 '+s5.n+' 轮平均 '+fmt1(s5.mean)+'（'+((s5.mean-s.mean)>=0?'+':'')+fmt1(s5.mean-s.mean)+'）':'';
+  box.innerHTML='<h3>评分统计 · '+esc(expOn()?('方式 '+(slotOf(state.drawMode)+1)+'（本次实验，从 0 算）'):drawModeInfo().name)
+    +' <button class="mini-btn danger" id="rateClearBtn" type="button">'+(expOn()?'清空本次实验':'清空')+'</button></h3>'
+    +'<div class="round-stats">'
+    +'<div class="stat"><b>'+s.n+'</b><span>已评轮数</span></div>'
+    +'<div class="stat"><b>'+fmt1(s.mean)+'</b><span>平均分 / '+RATE_MAX+'</span></div>'
+    +'<div class="stat"><b>'+fmt1(s.sd)+'</b><span>标准差</span></div>'
+    +'<div class="stat"><b>'+fmt1(s.vari)+'</b><span>方差</span></div>'
+    +'</div>'
+    +'<div class="rstat-line">最低 '+s.min+' · 最高 '+s.max+(trend?' · '+trend:'')+'</div>'
+    +'<div class="rstat-sep">按时段（每 2 小时）</div>'+(byP||'<div class="rate-empty">—</div>')
+    +'<div class="rstat-sep">按天（近 7 天）</div>'+(byD||'<div class="rate-empty">—</div>');
+}
+
+/* ---------------- 存档：IndexedDB 主存 + localStorage 兜底 ----------------
+   ⚠️ 为什么换：localStorage 本机实测只有 **5,000K 字符**，而"四条抽卡方式各攒历史 +
+   做对照实验"需要留几千轮聊天 —— 消息 4~5 万条就顶到墙（见 HANDOFF §8.1 那次教训）。
+
+   实测（Edge/Chromium，**file://** 下，一次性 profile）：
+     · IndexedDB：可开、可写、**重载后还在**、**两个 html 共享** → 可作主存
+     · storage.estimate() 报 quota ≈ **10.7 GB**（比 5MB 大两千倍）
+     · OPFS：`getDirectory()` 存在但调用抛 SecurityError → 用不了
+     · Cache API：能存能持久，但语义是 HTTP 缓存，不对口
+     · localStorage：5000K 字符上限，两个 html 共享（保持不变）
+   所以主存换 IndexedDB，localStorage 只留旧档兜底。
+
+   ⚠️ 换 IDB 带来的三个必须处理的点：
+     ① **异步**：开机要 await 读档；写盘是 Promise。
+     ② **防抖窗口里关页会丢最后一次改动** → pagehide / visibilitychange:hidden 强制 flush。
+     ③ **测试取数**：以前探针直接 `localStorage.getItem(...)` 读存档点，现在统一走
+        `window.__dump()` / `window.__flush()` / `window.__seed()`（见文件末尾）。 */
+const IDB_NAME='card-cloud', IDB_STORE='kv', IDB_KEY='state';
+const STORE_FLAG='card-cloud-store';   /* 'idb' | 'ls'：上次用的是哪条路 */
+
+let db=null;              /* IDBDatabase | null */
+let storeKind='ls';       /* 这次开机实际走哪条路 */
+let storeDegraded=false;  /* 旗标说该用 idb，这次却打不开 → 必须明确告警，别让旧兜底档冒充最新数据 */
+let lastWrite=Promise.resolve();
+/* 最近一次**成功落盘**的存档快照。给测试用的**同步**读接口（`window.__snapshot()`）——
+   ⚠️ 它只证明"应用把这份交给了存储且写成功了"，**不等于**"物理上已经躺在库里"；
+   要证明后者请用异步的 `window.__dump()`（真读一遍）。两者都在文件末尾的测试钩子里。 */
+let lastSaved=null;
+/* ⚠️ 快照对外保持**扁平视图**（messages/ratings/rounds/roundOrder 指向**当前方式**的那一份），
+   因为大量老断言读的就是这几个键；另外附上 byMode 给"模式隔离"那类判据用。 */
+const snapOf=o=>{
+  if(!o) return null;
+  const mk=o.drawMode||'halve';
+  const b=((o.byMode||{})[mk])||{};
+  return {
+    cards:o.cards, seeded:o.seeded, settings:o.settings, drawMode:mk,
+    exp:o.exp||{ on:false, slot:null, startTs:0 },
+    messages:(b.messages||o.messages||[]).slice(),
+    ratings:(b.ratings||o.ratings||[]).slice(),
+    rounds:b.rounds||{}, roundOrder:(b.roundOrder||[]).slice(),
+    pending:b.pending||null,
+    queue:(b.queue||[]).slice(),
+    byMode:o.byMode||{}
+  };
+};
+
+function openDB(){
+  return new Promise(resolve=>{
+    if(!window.indexedDB) return resolve(null);
+    let req;
+    try{ req=indexedDB.open(IDB_NAME,1); }catch(e){ return resolve(null); }
+    let settled=false;
+    const done=v=>{ if(!settled){ settled=true; resolve(v); } };
+    req.onupgradeneeded=()=>{ try{ req.result.createObjectStore(IDB_STORE); }catch(e){} };
+    req.onerror=()=>done(null);
+    req.onblocked=()=>done(null);
+    req.onsuccess=()=>{
+      const d=req.result;
+      d.onversionchange=()=>{ try{ d.close(); }catch(e){} if(db===d) db=null; };
+      done(d);
+    };
+    /* 有的环境 open 会一直挂着不回调 —— 3 秒不回来就当不可用，走兜底，别让开机卡死 */
+    setTimeout(()=>done(null),3000);
+  });
+}
+function idbGet(){
+  return new Promise(resolve=>{
+    if(!db) return resolve(null);
+    try{
+      const g=db.transaction(IDB_STORE,'readonly').objectStore(IDB_STORE).get(IDB_KEY);
+      g.onsuccess=()=>resolve(g.result||null);
+      g.onerror=()=>resolve(null);
+    }catch(e){ resolve(null); }
+  });
+}
+function idbPut(obj){
+  return new Promise((resolve,reject)=>{
+    if(!db) return reject(new Error('no db'));
+    try{
+      const tx=db.transaction(IDB_STORE,'readwrite');
+      tx.objectStore(IDB_STORE).put(obj,IDB_KEY);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error||new Error('tx error'));
+      tx.onabort=()=>reject(tx.error||new Error('tx abort'));
+    }catch(e){ reject(e); }
+  });
+}
+function lsGet(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'); }catch(e){ return null; } }
+
+/* 读原始存档。IDB 优先；IDB 里空着但旧 localStorage 有档 → **迁移**过来。
+   ⚠️ 迁移是"先写后删、失败保留"：写完**回读校验**（张数 + 序列化长度都得对上）才算数，
+   旧 localStorage 键**一律保留**当只读兜底，不删。 */
+async function storeLoad(){
+  db=await openDB();
+  if(db){
+    storeKind='idb';
+    const raw=await idbGet();
+    if(raw) return raw;
+    const legacy=lsGet();
+    if(!legacy) return null;
+    try{
+      await idbPut(legacy);
+      const back=await idbGet();
+      const same=!!(back&&back.cards&&legacy.cards)
+        && back.cards.length===legacy.cards.length
+        && (back.messages||[]).length===(legacy.messages||[]).length
+        && (back.ratings||[]).length===(legacy.ratings||[]).length
+        && JSON.stringify(back).length===JSON.stringify(legacy).length;
+      if(!same){ storeKind='ls'; return legacy; }   /* 没验过 → 不冒险，继续用旧档 */
+      try{ localStorage.setItem(STORE_FLAG,'idb'); }catch(e){}
+      libToast('存档已迁到浏览器数据库（IndexedDB）：容量从 5MB 提到 GB 级，聊天记录不再截断。');
+      return back;
+    }catch(e){ storeKind='ls'; return legacy; }
+  }
+  storeKind='ls';
+  try{ if(localStorage.getItem(STORE_FLAG)==='idb') storeDegraded=true; }catch(e){}
+  return lsGet();
+}
+function storeSave(obj){
+  if(storeKind==='idb'&&db) return idbPut(obj).then(()=>true).catch(()=>false);
+  try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(obj)); return Promise.resolve(true); }
+  catch(e){ return Promise.resolve(false); }
+}
+
+/* ---------------- 读档 ---------------- */
+async function load(){
   try{
-    const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
+    const raw=await storeLoad();
+    if(raw) lastSaved=snapOf(raw);
     if(!raw) return;
     if(Array.isArray(raw.cards)) state.cards=raw.cards.filter(c=>c&&typeof c.text==='string'&&c.text.trim()).map(c=>({
       id:String(c.id||uid()), text:c.text, used:Number(c.used)||0, lastUsedAt:Number(c.lastUsedAt)||0
     }));
-    if(Array.isArray(raw.messages)) state.messages=raw.messages.filter(m=>m&&(m.side==='me'||m.side==='other')).map(m=>({
-      side:m.side, text:String(m.text||''), ts:Number(m.ts)||nowTs(), roundId:m.roundId?String(m.roundId):null
-    })).slice(-200);
-    if(raw.rounds&&typeof raw.rounds==='object'){
-      for(const k of Object.keys(raw.rounds)){
-        const r=raw.rounds[k];
-        if(r&&Array.isArray(r.pool)&&Array.isArray(r.picks)) state.rounds[String(k)]=r;
-      }
+    /* ⚠️ 消息**不再截断 200 条** —— 换了 IDB 就是要留着做实验对比。 */
+    /* ---- 归一化：新旧格式共用 ---- */
+    if(raw.byMode&&typeof raw.byMode==='object'){
+      /* 新格式：四种抽卡方式各存各的 */
+      state.drawMode=DRAW_MODES.some(m=>m.k===raw.drawMode)?raw.drawMode:'halve';
+      DRAW_MODES.forEach(m=>{
+        const b=raw.byMode[m.k]||{};
+        const rounds=normRounds(b.rounds);
+        state.byMode[m.k]={ messages:normMsgs(b.messages), ratings:normRatings(b.ratings), rounds,
+          roundOrder:(Array.isArray(b.roundOrder)?b.roundOrder.map(String):[]).filter(id=>rounds[id]),
+          pending:(b.pending&&Array.isArray(b.pending.cards))?b.pending:null,
+          queue:Array.isArray(b.queue)?b.queue.filter(q=>Array.isArray(q)&&q.length):[] };
+      });
+    }else{
+      /* ⚠️ 老格式（扁平的 messages/ratings/rounds）→ **原样归给"分半收拢"**，一条都不动。
+         这就是"先写后删、失败保留"里的"先写"：老用户的聊天与评分不会因为加模式而丢。 */
+      state.drawMode='halve';
+      const rounds=normRounds(raw.rounds);
+      state.byMode={ halve:{ messages:normMsgs(raw.messages), ratings:normRatings(raw.ratings), rounds,
+        roundOrder:(Array.isArray(raw.roundOrder)?raw.roundOrder.map(String):[]).filter(id=>rounds[id]),
+        pending:null, queue:[] } };
     }
-    if(Array.isArray(raw.roundOrder)) state.roundOrder=raw.roundOrder.map(String).filter(id=>state.rounds[id]);
+    loadMode(state.drawMode);
+    /* 实验模式（槽位映射必须校验：不是 1~4 的完整排列就当没开，免得评分串位） */
+    if(raw.exp&&typeof raw.exp==='object'){
+      const s=Array.isArray(raw.exp.slot)?raw.exp.slot.filter(k=>DRAW_MODES.some(m=>m.k===k)):[];
+      const ok=s.length===DRAW_MODES.length&&DRAW_MODES.every(m=>s.indexOf(m.k)>=0);
+      state.exp={ on:!!raw.exp.on&&ok, slot:ok?s:null, startTs:Number(raw.exp.startTs)||0,
+                  ratingFrom:(raw.exp.ratingFrom&&typeof raw.exp.ratingFrom==='object')?raw.exp.ratingFrom:null };
+      if(!state.exp.on) state.exp.startTs=0;
+    }
     state.seeded=!!raw.seeded;
     if(raw.settings&&typeof raw.settings==='object'){
       /* ⚠️ 老存档是单一 settings.count（0=按顺序，1~6=固定抽几张）。
@@ -1220,66 +1627,83 @@ function load(){
     normRange();
   }catch(e){ /* 存档坏了就用默认值，不崩 */ }
 }
+
 let saveTimer=null;
-/* 轮次路径的字节预算。点单 localStorage 一般 5MB/域，而聊天+字卡本身要占 ~150KB，
-   还得给同域别的页面留余量。 */
-const ROUNDS_BUDGET=2800000;
 let storageWarned=false;
 function storageWarn(msg){
   if(storageWarned) return;
   storageWarned=true;
   try{ libToast(msg); }catch(e){}
 }
-/* 真正写盘。⚠️ 分成两个函数是有原因的：普通改动走 save() 的 180ms 防抖（打字时
-   不会每敲一个字写一次 localStorage），但**批量改动（导入 / 批量添加）必须立刻落盘** ——
-   客户导入 2000 条之后手快一点刷新页面，防抖窗口里就白导了。
-
-   ⚠️⚠️ 这里曾经是 `state.roundOrder.slice(-40)`：**一轮 = 整份候选池 + 每一层的 id 表**，
-   真库 1893 张时约 **590KB/轮**，40 轮 ≈ 23MB，而配额只有 5MB —— 第 7~8 轮就写不进去了。
-   写失败又被 `catch(e){}` **静默吞掉**，于是**从爆掉那一刻起每一次保存都失败**，
-   存档冻结在最后一次成功的位置。用户看到的就是：
-   「聊天记录只存最开始那几句，一刷新后面聊的全没了」（桌面版手机版同时中招）。
-   现在：① 轮次按**字节**装，从新到旧，装不下就停在刚好放得下处；
-   ② 三级降级重试，**保证聊天记录一定写得进去**（那是绝不能丢的一份）；
-   ③ 真的降级了会明确告诉用户，不再静默。 */
+/* 真正的写盘。
+   · 走 IDB：整份写，**不再截断消息**（容量按 GB 算）。
+   · 走 localStorage 兜底：保留原来的三级降级（它真的会满 —— 见 HANDOFF §8.1）。 */
 function writeNow(){
-  const messages=state.messages.slice(-200);
-  let keep=[], rounds={}, bytes=0;
-  for(let i=state.roundOrder.length-1;i>=0 && keep.length<40;i--){
-    const id=state.roundOrder[i], r=state.rounds[id];
-    if(!r) continue;
-    /* ⚠️ `cur` / `remaining` 是"正在抽这一张"的临时状态，演完就没人读了。
-       存它们等于把整份候选池再抄两遍（真库下 2×124KB/轮）→ 白白吃掉回看历史。
-       回放只读 layers / picks / pool，这里就只留这些。 */
-    const slim={ id:r.id, pool:r.pool, count:r.count, picks:r.picks, layers:r.layers,
-                 committed:r.committed, createdAt:r.createdAt };
-    const s=JSON.stringify(slim);
-    if(keep.length && bytes+s.length>ROUNDS_BUDGET) break;   /* 至少留一轮，别把自己饿死 */
-    bytes+=s.length; keep.unshift(id); rounds[id]=slim;
+  stashMode();   /* ⚠️ 必须先归位：state.messages 等是"当前模式"的引用，不归位就只存了当前这一份 */
+  const rounds=(()=>{
+    /* 轮次只留最近一条（回看用）；`cur`/`remaining` 是"正在抽"的临时状态，不存 */
+    let r={}, order=[];
+    const id=state.roundOrder[state.roundOrder.length-1], cur=id?state.rounds[id]:null;
+    if(cur){
+      r[cur.id]={ id:cur.id, pool:cur.pool, count:cur.count, picks:cur.picks, layers:cur.layers,
+                  committed:cur.committed, createdAt:cur.createdAt };
+      order=[cur.id];
+    }
+    return { r, order };
+  })();
+  const payload={
+    cards:state.cards, drawMode:state.drawMode, byMode:state.byMode, exp:state.exp,
+    rounds:rounds.r, roundOrder:rounds.order, settings, seeded:state.seeded
+  };
+  if(storeKind==='idb'&&db){
+    lastWrite=storeSave(payload).then(ok=>{
+      if(ok) lastSaved=snapOf(payload);
+      else storageWarn('存档写入数据库失败，请检查浏览器存储权限。');
+    });
+    return lastWrite;
   }
-  const tries=[
-    { rounds, roundOrder:keep, messages },
-    { rounds:{}, roundOrder:[], messages },
-    { rounds:{}, roundOrder:[], messages: messages.slice(-60) }
-  ];
+  /* localStorage 兜底：整份 byMode 写进去；它真的会满，所以保留降级
+     （满 → 每个模式只留最近 60 条聊天；再满就只报错不再假装成功）。 */
+  const build=cap=>({
+    cards:state.cards, drawMode:state.drawMode, settings, seeded:state.seeded,
+    rounds:rounds.r, roundOrder:rounds.order,
+    byMode:(()=>{
+      const o={};
+      for(const k of Object.keys(state.byMode)){
+        const b=state.byMode[k]||{};
+        o[k]={ messages:cap?(b.messages||[]).slice(-cap):(b.messages||[]),
+               ratings:b.ratings||[], rounds:b.rounds||{}, roundOrder:b.roundOrder||[],
+               pending:b.pending||null, queue:b.queue||[] };
+      }
+      return o;
+    })()
+  });
+  const tries=[build(0), build(60)];
   for(let i=0;i<tries.length;i++){
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        cards:state.cards, messages:tries[i].messages,
-        rounds:tries[i].rounds, roundOrder:tries[i].roundOrder,
-        settings, seeded:state.seeded
-      }));
-      if(i===1) storageWarn('回看用的历史路径超出浏览器存储上限，已清掉最旧的；聊天记录不受影响。');
-      else if(i===2) storageWarn('浏览器存储已满，只保留了最近 60 条聊天。建议先「导出备份」再清理字卡库。');
-      return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tries[i]));
+      if(i===1) storageWarn('浏览器存储已满，每个方式只留了最近 60 条聊天。建议先「导出备份」再清理字卡库。');
+      lastSaved=snapOf(tries[i]);
+      return Promise.resolve(true);
     }catch(e){ /* 这一份还是太大 → 换更小的一份再试 */ }
   }
   storageWarn('聊天记录存不下了（浏览器存储已满）。请先用「导出备份」存一份，再删掉一些字卡。');
+  return Promise.resolve(false);
 }
 function save(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(writeNow,180);
 }
+/* 立刻落盘（不等防抖）并返回写入 Promise —— 关页/切后台/测试都用它。 */
+function flush(){
+  if(saveTimer){ clearTimeout(saveTimer); saveTimer=null; writeNow(); }
+  return lastWrite;
+}
+/* ⚠️ 防抖窗口里关页会丢最后一次改动。IDB 没有同步 API，只能尽早 flush：
+   visibilitychange:hidden 通常发生在页面销毁之前，比 pagehide 更早、更可靠。 */
+const flushOnHide=()=>{ if(saveTimer) flush(); };
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') flushOnHide(); });
+window.addEventListener('pagehide',flushOnHide);
 
 /* ---------------- 字卡库 ---------------- */
 function visibleCards(){
@@ -1352,14 +1776,14 @@ function addCards(texts){
 function libToast(msg){ els.libToast.textContent=msg; if(msg) setTimeout(()=>{ if(els.libToast.textContent===msg) els.libToast.textContent=''; },4000); }
 
 function exportJson(){
-  const data={ type:'card-cloud-backup', v:2, exportedAt:new Date().toISOString(), cards:state.cards.map(c=>({text:c.text,used:c.used,lastUsedAt:c.lastUsedAt})), messages:state.messages };
+  const data={ type:'card-cloud-backup', v:2, exportedAt:new Date().toISOString(), cards:state.cards.map(c=>({text:c.text,used:c.used,lastUsedAt:c.lastUsedAt})), messages:state.messages, ratings:state.ratings };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download='字卡库-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.append(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),1500);
-  libToast('已导出 '+state.cards.length+' 张字卡和 '+state.messages.length+' 条对话。');
+  libToast('已导出 '+state.cards.length+' 张字卡、'+state.messages.length+' 条对话、'+state.ratings.length+' 条评分。');
 }
 /* 从任意来源的 JSON 里挑出所有字卡文本。兼容四种输入：
    ① 裸数组                 ['文本', {text}, ...]
@@ -1448,6 +1872,315 @@ function renderHealth(){
 
    这样重演一遍会得到不同的卡（没有 seed 可复现），这是刻意的：
    它让"镜头在左还是右"变成真的现场选择，而不是回放一段已定的剧本。 */
+/* ================= 五种抽卡方式 =================
+   客户定稿的硬规矩：
+     ① **发消息前不得存在"本轮会抽到谁"的数据**（唯一例外是"预定对照"，它就是为此存在的对照组）
+     ② 每种方式里**每张卡被抽到的概率严格相等**
+     ③ 允许跨轮重复，不做防重复/冷却
+   四种方式**共用同一份字卡**，但**聊天记录与评分各自独立**。
+
+   实现手法是**引用交换**（见 state 里那段注释）：state.messages / rounds / roundOrder /
+   ratings / pending 永远指向"当前方式"的那一份。于是 renderMessages / dripDeliver /
+   commitRound / 评分统计 / writeNow 这些**一行都不用改**。 */
+const DRAW_MODES=[
+  { k:'halve',   name:'分半收拢', short:'云抽取', desc:'候选一层层筛掉，镜头扫过之后留下它' },
+  { k:'shuffle', name:'洗牌发牌', short:'洗牌',   desc:'每次发消息重洗一遍，取最前面几张' },
+  { k:'blind',   name:'盲抽自选', short:'盲抽',   desc:'5 张牌背朝上，凭感觉点一张；其余张数按洗牌补齐' },
+  { k:'control', name:'预定对照', short:'对照',   desc:'发消息的那一刻才抽当轮（无动画，直接出结果）' },
+  { k:'queue',   name:'预排队列', short:'预排',   desc:'往后 100 张卡的回复一次性先排好，之后发一条取一个（无动画）' }
+];
+function drawModeInfo(k){ return DRAW_MODES.find(m=>m.k===(k||state.drawMode))||DRAW_MODES[0]; }
+/* ---- 实验模式（盲测）---- */
+const expOn=()=>!!state.exp.on;
+/* 当前方式在实验里是第几个槽（1~4 显示用） */
+const slotOf=k=>Math.max(0,(state.exp.slot||[]).indexOf(k));
+const slotMethod=i=>(state.exp.slot||[])[i]||DRAW_MODES[i].k;
+/* ⚠️ 实验模式下的统计**只看本次实验**的评分（进入时的条数当基线）→ 从 0 开始。
+   旧评分一条都不删：关掉实验模式，它们立刻又能看到。 */
+function visibleRatings(){
+  if(!expOn()) return state.ratings;
+  const from=(state.exp.ratingFrom||{})[state.drawMode]||0;
+  return state.ratings.slice(from);
+}
+function enterExp(){
+  const marks={};
+  DRAW_MODES.forEach(m=>{ marks[m.k]=(((state.byMode[m.k]||{}).ratings)||[]).length; });
+  /* 槽位映射只洗这一次并落盘：刷新也不变，否则同一轮评分会串到别的方法名下 */
+  state.exp={ on:true, slot:shuffle(DRAW_MODES.map(m=>m.k), Math.random), startTs:nowTs(), ratingFrom:marks };
+  save(); renderMessages(); renderRatingStats(); renderModeUI();
+  libToast('实验模式已开：按钮名字打乱成 1~4，进入之前的聊天已隐藏，评分从 0 重新算（旧评分没删）。');
+}
+function exitExp(){
+  const map=(state.exp.slot||[]).map((k,i)=>(i+1)+'='+drawModeInfo(k).name).join('、');
+  state.exp={ on:false, slot:null, startTs:0, ratingFrom:null };
+  save(); renderMessages(); renderRatingStats(); renderModeUI();
+  libToast('实验模式已关'+(map?('。刚才的对应：'+map):'')+'；评分本来就记在各自方法名下，切过去就能分别看。');
+}
+function blankMode(){ return { messages:[], rounds:{}, roundOrder:[], ratings:[], pending:null, queue:[] }; }
+function stashMode(){
+  state.byMode[state.drawMode]={ messages:state.messages, rounds:state.rounds,
+    roundOrder:state.roundOrder, ratings:state.ratings, pending:state.pending, queue:state.queue };
+}
+function loadMode(k){
+  const b=state.byMode[k]||(state.byMode[k]=blankMode());
+  state.messages=b.messages; state.rounds=b.rounds; state.roundOrder=b.roundOrder;
+  state.ratings=b.ratings; state.pending=b.pending||null; state.queue=b.queue||[];
+}
+/* —— 归一化（新旧存档共用） —— */
+function normMsgs(a){
+  return Array.isArray(a)?a.filter(m=>m&&(m.side==='me'||m.side==='other')).map(m=>({
+    side:m.side, text:String(m.text||''), ts:Number(m.ts)||nowTs(), roundId:m.roundId?String(m.roundId):null
+  })):[];
+}
+function normRatings(a){
+  return Array.isArray(a)?a.filter(r=>r&&typeof r.score==='number').map(r=>({
+    id:String(r.id||uid('rate')), rid:String(r.rid||''), score:clamp(Math.round(r.score),0,RATE_MAX),
+    ts:Number(r.ts)||nowTs(), me:String(r.me||'').slice(0,120), ta:String(r.ta||'').slice(0,200)
+  })):[];
+}
+function normRounds(o){
+  const out={};
+  if(o&&typeof o==='object') for(const k of Object.keys(o)){
+    const r=o[k];
+    if(r&&Array.isArray(r.pool)&&Array.isArray(r.picks)) out[String(k)]=r;
+  }
+  return out;
+}
+
+/* —— 切模式 —— */
+function setDrawMode(k){
+  if(!DRAW_MODES.some(m=>m.k===k)||k===state.drawMode) return;
+  /* ⚠️ 必须先把所有异步链路停掉：drip 正在一条一条发消息、弹层可能挂着"演完自动关"、
+     镜头动画可能还在跑。不停就会**把 A 方式的回复落进 B 方式的聊天记录**。 */
+  stopDrip(); cancelAutoClose(); halt(); clearTimeout(state.timer);
+  state.table=null;
+  stashMode();
+  state.drawMode=k;
+  loadMode(k);
+  state.msgWindow=150;
+  state.hitIds=new Set();
+  restoreRatingPrompt();
+  save();
+  renderMessages(); renderLibrary(); renderHealth(); renderRatingStats(); renderModeUI();
+  libToast('已切到「'+(expOn()?('方式 '+(slotOf(k)+1)):drawModeInfo(k).name)+'」'
+    +(expOn()?'（实验模式：不告诉你是哪种）':'—— 它有自己的聊天记录和评分（字卡共用）。'));
+}
+
+/* 把那条"未来队列"摊开给人看：接下来每一轮会用哪几句。
+   ⚠️ 文本是直接从**队列快照**里读的，不是重新抽的 —— 所以看到什么，下一条就真是什么。 */
+function renderQueueBox(){
+  const box=els.queueBox; if(!box) return;
+  if(!state.queue.length){
+    box.innerHTML='<div class="queue-head">队列是空的 —— 下一条消息时会一次性排好后 '+QUEUE_CARDS+' 张卡（约 25~50 轮）。</div>';
+    return;
+  }
+  box.innerHTML='<div class="queue-head">这 '+state.queue.length+' 轮（共 '+queueCards()+' 张）的结果**已经定好了**；发一条就取走最上面那一轮。</div>'
+    + state.queue.map((round,i)=>
+        '<div class="queue-round"><b>第 '+(i+1)+' 轮</b>'+esc(round.map(c=>c.text).join(' ／ '))+'</div>').join('');
+}
+
+/* 把切换器 / 说明 / 聊天头 / 「回看」按钮同步到当前方式 */
+function renderModeUI(){
+  const box=els.modeSwitch;
+  const es=expOn();
+  if(box) box.querySelectorAll('[data-slot]').forEach((b,i)=>{
+    const on=(es?slotMethod(i):b.dataset.mode)===state.drawMode;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
+    /* ⚠️ 实验模式只显示编号：按钮名字一旦露出真名，盲测就没了 */
+    b.textContent=es?String(i+1):drawModeInfo(b.dataset.mode).name;
+  });
+  if(els.modeDesc) els.modeDesc.textContent=es
+    ? '实验模式：五个按钮的名字被打乱成编号，进入之前的聊天已隐藏，评分从 0 算起。'
+    : (drawModeInfo().desc + ((state.drawMode==='queue')&&!es
+        ? (state.queue.length
+            ? (' · 往后 '+queueCards()+' 张／'+state.queue.length+' 轮已经排好了')
+            : (' · 还没排，下一条消息时排往后 '+QUEUE_CARDS+' 张'))
+        : ''));
+  if(els.modeNote) els.modeNote.style.display=es?'none':'';
+  if(els.headSub) els.headSub.textContent='回复从 '+state.cards.length+' 张可见字卡中现场抽出 · '
+    +(es?('实验模式 · 方式 '+(slotOf(state.drawMode)+1)):drawModeInfo().name);
+  if(els.expToggle){
+    els.expToggle.classList.toggle('on',es);
+    els.expToggle.textContent=es?'结束实验模式':'实验模式（盲测）';
+    els.expToggle.setAttribute('aria-pressed',es?'true':'false');
+  }
+  /* ⚠️ 实验模式下必须禁用「回看上一轮路径」：那是分半收拢独有的镜头动画，
+     一旦能点开，等于直接告诉用户"现在用的是分半收拢"，盲测就废了。 */
+  /* 「看一眼队列」只在**预排队列 + 非实验模式**下出现；
+     实验模式下必须藏起来 —— 它能一眼说明"你在用预排队列"。 */
+  if(els.queueWrap){
+    const show=!es&&state.drawMode==='queue';
+    els.queueWrap.hidden=!show;
+    if(!show&&els.queueBox) els.queueBox.hidden=true;
+    if(show&&els.queueToggle) els.queueToggle.textContent='看一眼队列（往后 '+queueCards()+' 张／'+state.queue.length+' 轮已经排好了）';
+  }
+  if(els.reopen){
+    const ok=!es&&state.drawMode==='halve'&&state.roundOrder.length>0;
+    els.reopen.disabled=!ok;
+    els.reopen.title=es?'实验模式下不可回看（会暴露用的哪种方法）'
+      :(state.drawMode==='halve'?'':'这个抽卡方式没有可回看的路径');
+  }
+}
+
+/* —— 三种新抽法 —— */
+/* 洗牌发牌：发消息时重洗一遍，取**最前面 N 张**。
+   均匀置换的顶 N 张 ⇒ 任一张卡进入本轮回复的概率 = N/M，对每张卡完全相同。 */
+function shuffleDraw(pool, n){
+  const deck=shuffle(pool, Math.random);
+  return deck.slice(0, Math.max(1, Math.min(n, deck.length)));
+}
+/* 预定对照：发消息前就把本轮抽完（**故意**违反规矩①，它就是对照组）。
+   无放回均匀抽 N 张 ⇒ 与洗牌法、与分半收拢**同一个分布**，差别只在"什么时候决定的"。 */
+function controlDraw(pool, n){
+  const rest=pool.slice(), out=[];
+  const k=Math.max(1, Math.min(n, rest.length));
+  for(let i=0;i<k;i++) out.push(rest.splice(Math.floor(Math.random()*rest.length),1)[0]);
+  return out;
+}
+/* —— 预定对照的"未来队列" ——
+   客户 2026-10-06 纠正了它的语义：不是"这一轮提前定"，而是
+   **"往后好几轮的结果一次性全排好"**。所以这里是排一小批（约 100 张卡）塞进队列，
+   之后每发一条就 shift 一个，取完再排下一批。
+   ⚠️ 每轮要抽几张也**一起预定**（`rollCount` 在排队时就摇掉）：中途改"最少~最多"设置
+      不会影响已经排好的那几轮 —— 那正是"未来的对话已经定了"的意思。
+   ⚠️ 队列里存的是 {id,text} **文本快照**：中途删卡/改卡也不会改掉已经排好的结果。 */
+/* 一批排多少**张卡**（不是多少轮）。客户 2026-10-06：直接预排 100 张，空间不用愁。
+   ⚠️ 一轮要抽 2~4 张，所以一批大约 **25~50 轮**；每轮抽几张也在排队时一起定掉。
+   体积：100 张 × (卡号 ~15 + 原文 ~20 字符) ≈ 5KB —— 相对整份存档是零头。 */
+const QUEUE_CARDS=100;
+function controlRefill(){
+  const q=[]; let n=0, guard=0;
+  do{
+    const k=Math.max(1, rollCount(state.cards.length));
+    q.push(controlDraw(state.cards, k).map(c=>({ id:c.id, text:c.text })));
+    n+=k;
+  }while(n<QUEUE_CARDS && ++guard<400);   /* 400 轮上限纯粹防跑飞 */
+  return q;
+}
+/* 队列里一共有多少张卡（界面显示用；"轮"是给人看的，"张"才是排多少） */
+const queueCards=()=>state.queue.reduce((a,r)=>a+(r?r.length:0),0);
+function controlNext(){
+  if(!state.queue||!state.queue.length) state.queue=controlRefill();
+  const cards=state.queue.shift();
+  save();
+  return cards;
+}
+/* 盲抽自选：**无放回**均匀抽 5 张，再随机洗进 5 个位置。
+   ⚠️ 必须"无放回"：有放回抽 5 张的话概率是 [1-(1-1/M)^5]/5，比 1/M 略小，就不是严格均匀了。
+   ⚠️ 位置必须每轮重洗：否则用户会摸出"第 3 张老是好的"，等于把随机性泄露出去。
+   每张卡最终被选中的概率 = (5/M) × (1/5) = **1/M** ✅ 与其它三种一致。 */
+function blindDeal(pool){
+  const k=Math.min(5, pool.length);
+  return shuffle(shuffle(pool, Math.random).slice(0,k), Math.random);
+}
+/* 三种新方式统一的交付口：标命中 → 落进聊天（复用既有的"一条一条落地"） */
+function deliverReply(cards, rid){
+  markUsed(cards.map(c=>c.id));
+  state.hitIds=new Set(cards.map(c=>c.id));
+  save(); renderLibrary(); renderHealth();
+  dripDeliver(cards, rid);
+}
+
+/* —— 牌桌（洗牌法的切牌小动作 + 盲抽的 5 张牌背）—— */
+const SHUFFLE_MIN_MS=1000;   /* 客户要求：切牌小动作至少 1s */
+function tableEl(T){
+  const wrap=document.createElement('div');
+  wrap.className='card-table'+(T.kind==='blind'?' is-blind':'');
+  wrap.dataset.rid=T.rid;
+  T.cards.forEach((c,i)=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.className='tcard';
+    b.dataset.card=c.id;
+    /* ⚠️ 盲抽在点之前**不把牌面写进 DOM** —— 否则打开开发者工具就能"看牌"作弊，
+       "凭感觉"这件事就假了。点完才把 5 张全放出来（另外 4 张就是"没抽到的"）。 */
+    const face=(T.kind==='shuffle') ? (i<T.flipped) : !!T.pickedId;
+    if(T.kind==='blind'&&T.pickedId===c.id) b.classList.add('picked');
+    b.disabled=(T.kind==='blind')?!!T.pickedId:true;
+    b.innerHTML='<span class="tback"></span>'+(face?'<span class="tface">'+esc(c.text)+'</span>':'');
+    wrap.append(b);
+  });
+  if(T.kind==='blind'&&T.pickedId){
+    const tip=document.createElement('div');
+    tip.className='table-tip';
+    tip.textContent='你抽到的是高亮那张；其余 4 张是这次没抽到的。'
+      +(T.fillN?('本轮一共 '+T.total+' 张，另外 '+T.fillN+' 张按洗牌补上了。'):'');
+    wrap.append(tip);
+  }
+  return wrap;
+}
+function paintTable(){
+  const T=state.table; if(!T) return;
+  const box=els.messages.querySelector('.card-table'); if(!box) return;
+  /* ⚠️ 就地加牌面，不重建整张桌子 —— 重建会让"展牌"入场动画每翻一张就重播一次 */
+  [...box.querySelectorAll('.tcard')].forEach((el,i)=>{
+    if(i<T.flipped&&!el.querySelector('.tface')){
+      const c=T.cards[i];
+      el.insertAdjacentHTML('beforeend','<span class="tface">'+esc(c.text)+'</span>');
+    }
+  });
+}
+/* 洗牌：一排牌背展开 → 依次翻开（总时长 ≥ SHUFFLE_MIN_MS） */
+function showShuffleTable(cards){
+  const rid=uid('round');
+  const total=Math.max(SHUFFLE_MIN_MS, 300+220*cards.length);
+  state.table={ kind:'shuffle', rid, cards:cards.map(c=>({id:c.id,text:c.text})), flipped:0, total };
+  renderMessages();
+  const t0=performance.now();
+  const step=()=>{
+    const T=state.table;
+    /* 中途切了模式 / 关了这一轮 → 放弃这次演出，别把结果吐到别处 */
+    if(!T||T.kind!=='shuffle'||T.rid!==rid) return;
+    const p=Math.min(1,(performance.now()-t0)/total);
+    /* 前 30% 展牌，之后匀速翻，最后一张正好在 total 那一刻翻完 */
+    const n=Math.min(cards.length, Math.ceil((p<0.3?0:(p-0.3)/0.7)*cards.length));
+    if(n!==T.flipped){ T.flipped=n; paintTable(); }
+    if(p<1){ requestAnimationFrame(step); return; }
+    state.table=null;
+    renderMessages();
+    deliverReply(cards, rid);
+  };
+  requestAnimationFrame(step);
+}
+/* 盲抽一轮的**最终结果**：你点的那张排第一 + 本轮还差几张就按洗牌从**剩下的牌**里补。
+   ⚠️ 补齐之后每张卡进入本轮回复的概率仍然是 **N/M**，与洗牌法/对照法完全一致：
+        P(被点中) = 1/M，P(被补进来) = (1-1/M)·(N-1)/(M-1) = (N-1)/M，两者相加 = N/M ✅
+   纯函数，方便判据直接跑分布。 */
+function blindRound(hand, pickedIdx, pool, n){
+  const picked=hand[pickedIdx];
+  const need=Math.max(1, Math.min(n, pool.length));
+  const rest=pool.filter(c=>c.id!==picked.id);
+  const fill=need>1?shuffleDraw(rest, need-1):[];
+  return [picked, ...fill];
+}
+/* 盲抽：点牌 → 你点的那张排第一；要回几条跟着「最少~最多」走，其余按洗牌补 */
+function pickBlind(cardId){
+  const T=state.pending;
+  if(!T||T.pickedId) return;
+  const idx=T.cards.findIndex(x=>x.id===cardId);
+  if(idx<0) return;
+  const need=Math.max(1, rollCount(state.cards.length));
+  const cards=blindRound(T.cards, idx, state.cards, need);
+  T.pickedId=T.cards[idx].id;
+  T.total=cards.length;
+  T.fillN=Math.max(0, cards.length-1);
+  renderMessages(); save();
+  deliverReply(cards, T.rid);
+}
+
+/* 跑完一整轮分半收拢，返回最终抽中的卡（给"四种方式同分布"那条判据用）。
+   走的就是 finishPick/settlePick —— 和「跳过动画」完全相同的一条随机路径。 */
+function halveSet(pool, n){
+  const round=createRound(pool, n);
+  let guard=0;
+  while(guard++<500 && round.pick<round.count && round.remaining.length){
+    finishPick(round);
+    if(!settlePick(round)) break;
+  }
+  return round.picks.map(id=>poolGet(round,id)).filter(Boolean);
+}
+
 function createRound(pool, requested){
   /* 只摇一次队形：决定卡在轴上怎么排。跟最终抽中谁无关。 */
   const ordered=shuffle(pool.map(c=>({...c})), Math.random);
@@ -1546,27 +2279,55 @@ function markUsed(ids){
 /* ---------------- 消息区 ---------------- */
 function renderMessages(){
   els.messages.innerHTML='';
-  if(!state.messages.length){
+  /* ⚠️ 实验模式：**进入之前的消息一律不显示**。各方式自己的旧聊天也要隐 ——
+     否则切到某个槽一眼就认出"这是分半的日志"（那些消息还带着方法名角标）。 */
+  const shown=expOn()?state.messages.filter(m=>m.ts>=state.exp.startTs):state.messages;
+  if(!shown.length){
     const d=document.createElement('div');
     d.className='empty';
-    d.innerHTML='<strong>让字卡自己靠近</strong><span>输入一句话，看看 '+state.cards.length+' 张候选如何一轮轮收缩成回复。</span>'
-      +'<div class="eg">'+IMPORTED_LIBRARY.slice(0,4).map(t=>'<b>'+esc(t)+'</b>').join('')+'</div>';
+    d.innerHTML=expOn()
+      ? '<strong>实验模式</strong><span>进入实验之前的聊天已隐藏。发一条消息，开始这一次。</span>'
+      : '<strong>让字卡自己靠近</strong><span>输入一句话，看看 '+state.cards.length+' 张候选如何一轮轮收缩成回复。</span>'
+        +'<div class="eg">'+IMPORTED_LIBRARY.slice(0,4).map(t=>'<b>'+esc(t)+'</b>').join('')+'</div>';
     els.messages.append(d);
     return;
   }
-  state.messages.forEach(m=>{
+  /* ⚠️ 存档不限历史了，但 DOM 必须限：几万条消息一次塞进去会直接冻住页面。
+     state.messages 是**全量**（统计/导出都用它），这里只画最近 msgWindow 条。
+     顶部的「载入更早」按窗口翻，翻到头就不显示。 */
+  const total=shown.length;
+  const win=Math.max(40,state.msgWindow|0);
+  const start=Math.max(0,total-win);
+  if(start>0){
+    const bar=document.createElement('div');
+    bar.className='more-bar';
+    bar.innerHTML='<button type="button" id="loadEarlier" class="chip">载入更早的 '+Math.min(MSG_STEP,start)+' 条</button>'
+      +'<span>上面还有 '+start+' 条 · 存档里全都在</span>';
+    els.messages.append(bar);
+  }
+  shown.slice(start).forEach(m=>{
     const row=document.createElement('div');
     row.className='msg '+(m.side==='me'?'me':'');
-    const meta=m.side==='me'?'我 · '+timeText(m.ts):'TA · '+timeText(m.ts)+(m.roundId?' · 云抽取':'');
+    /* 实验模式下**不挂方法角标**（那是白送的提示） */
+    const meta=m.side==='me'?'我 · '+timeText(m.ts)
+      :'TA · '+timeText(m.ts)+((m.roundId&&!expOn())?(' · '+drawModeInfo().short):'');
     row.innerHTML='<div class="bubble">'+esc(m.text)+'</div><div class="msg-meta">'+meta+'</div>';
     els.messages.append(row);
   });
+  /* 牌桌：洗牌法的切牌演出（临时，演完就收）/ 盲抽摆的那一手（点完也留着 —— 
+     客户要的就是"抽完展示其他没抽的牌面"，所以它一直留在聊天里）。
+     ⚠️ **不要挂在 `!state.typing` 上**：盲抽出了一轮 N 条时，drip 期间 typing 是亮的，
+     挂上去牌桌会在回复逐条落地时被藏起来（出 1 条时不会，所以只测 1 条发现不了）。 */
+  const tab=state.table||state.pending;
+  if(tab) els.messages.append(tableEl(tab));
   if(state.typing){
     const t=document.createElement('div');
     t.className='typing'; t.id='typing';
     t.innerHTML='<span></span><span></span><span></span> TA 正在整理字卡';
     els.messages.append(t);
   }
+  /* 打分卡：梦角这一轮发完了（typing 落定）才出现，跟在最后一条回复后面 */
+  if(state.ratingFor && !state.typing) els.messages.append(ratingCardEl(state.ratingFor));
   els.messages.scrollTop=els.messages.scrollHeight;
 }
 function showTyping(on){ state.typing=on; renderMessages(); }
@@ -2121,15 +2882,25 @@ function dripDeliver(cards, roundId){
   stopDrip();
   let i=0;
   const t0=nowTs();
+  /* 这一轮"发完了"的收口。⚠️ 必须由**最后一张落完**时调用：
+     ⚠️ 原来这里只有开头的 `if(i>=cards.length)` 分支 —— 那是**死代码**：
+     最后一张时 more=false 就不再排下一次 step 了，这个分支永远跑不到。
+     打分卡一度就是挂在这个死分支上，于是"发完了"永远不触发。 */
+  const done=()=>{
+    dripTimer=null; state.typing=false;
+    const rm=roundMsgs(roundId);
+    state.ratingFor={ rid:roundId, me:rm.me, ta:rm.ta.length?rm.ta:cards.map(c=>c.text) };
+    save(); renderMessages();
+  };
   const step=()=>{
-    if(i>=cards.length){ dripTimer=null; state.typing=false; renderMessages(); save(); return; }
+    if(i>=cards.length){ done(); return; }   /* 空数组兜底 */
     const c=cards[i++];
     /* 时间戳按张错开：四条全落在同一秒里会显得很假 */
     state.messages.push({side:'other', text:c.text, ts:t0+(i-1)*1000, roundId:roundId});
     const more=i<cards.length;
     state.typing=more;
-    save(); renderMessages();
-    if(more) dripTimer=setTimeout(step, DRIP_GAP);
+    if(more){ save(); renderMessages(); dripTimer=setTimeout(step, DRIP_GAP); }
+    else done();                              /* ★ 最后一张落完 = 这一轮发完了 */
   };
   step();
 }
@@ -2149,6 +2920,13 @@ function commitRound(round){
 const AUTO_CLOSE_MS=760;
 let autoCloseTimer=null;
 function cancelAutoClose(){ if(autoCloseTimer){ clearTimeout(autoCloseTimer); autoCloseTimer=null; } }
+/* ⚠️ 验收钩子：自动化要在**落定之后**量几何、读结果栏、截图，而面板 760ms 后就自动收了。
+   给测试一个"保持面板打开"的开关（`window.__holdModal=true` 或 URL 带 `?hold=1`），
+   **只影响自动化，真实用户的行为一个字都不变**（默认走自动关）。
+   没有这个钩子，verify-layout 这类"逐量级抓几何"的判据会集体假红。 */
+function holdModal(){
+  try{ return window.__holdModal===true || /[?&]hold=1/.test(location.search); }catch(e){ return false; }
+}
 /* 一轮演完：把结果写进结果栏并落进聊天 */
 function finishRound(round){
   clearTimeout(state.timer);
@@ -2173,7 +2951,7 @@ function finishRound(round){
      关面板走的就是 × 那条路（halt + 已落定则不重复 commit），drip 用的是独立 dripTimer，
      所以面板一关，TA 的回复照样一条条落进聊天。 */
   cancelAutoClose();
-  if(!wasReplay) autoCloseTimer=setTimeout(()=>{ autoCloseTimer=null; $('#closeCloud').click(); }, AUTO_CLOSE_MS);
+  if(!wasReplay && !holdModal()) autoCloseTimer=setTimeout(()=>{ autoCloseTimer=null; $('#closeCloud').click(); }, AUTO_CLOSE_MS);
 }
 
 /* ---------------- 发送 ---------------- */
@@ -2181,11 +2959,18 @@ function send(){
   const text=els.input.value.trim();
   if(!text||state.typing) return;
   if(!state.cards.length){ libToast('字卡库是空的，TA 没有话可说。先加一张。'); return; }
+  /* ⚠️ 记住"发消息时是哪一种方式"：这条链是异步的（起手延迟 + 各种动画），
+     中途用户切了模式，结果**绝不能**吐到新模式里去。 */
+  const myMode=state.drawMode;
   state.messages.push({side:'me', text, ts:nowTs()});
+  /* 开新一轮 → 收起上一轮的打分卡（一轮一张，不给上一轮补打；要统计就别漏评） */
+  state.ratingFor=null;
+  state.pending=null;      /* 上一手没点的盲抽牌就此作废，不跟新一轮混在一起 */
   els.input.value=''; autoGrow();
   showTyping(true);
   const delay=520+Math.random()*760;
   setTimeout(()=>{
+    if(state.drawMode!==myMode) return;    /* 切过模式 → 这一轮作废，别往新模式里塞 */
     showTyping(false);
     if(settings.countMin===0){
       const c=nextInOrder();
@@ -2193,20 +2978,49 @@ function send(){
         markUsed([c.id]);
         state.hitIds=new Set([c.id]);
         state.messages.push({side:'other', text:c.text, ts:nowTs()});
+        /* 「按顺序」模式没有抽取轮次，但**评分照样要能打**，所以造一个独立的轮 id + 内容快照 */
+        state.ratingFor={ rid:uid('round'), me:text, ta:[c.text] };
         save(); renderMessages(); renderLibrary(); renderHealth();
       }
-    }else{
-      /* ⚠️ 张数是**这一轮现摇**的（rollCount），不是建轮前就定好的常量 ——
-         和 collapseStep 同一个原则：结果必须现场产生。
-         摇出来多少张，这一轮就演多少张；回放走 round.layers 录像，不会重摇。 */
-      const want=rollCount(state.cards.length);
-      const round=createRound(state.cards, want);
-      state.rounds[round.id]=round;
-      state.roundOrder.push(round.id);
-      if(state.roundOrder.length>60) delete state.rounds[state.roundOrder.shift()];
-      save();
-      openRound(round,'live');
+      return;
     }
+    const want=rollCount(state.cards.length);
+
+    /* —— 洗牌发牌：重洗一遍 → 取最前 N 张 → 牌背展开、依次翻开（≥1s）→ 交付 —— */
+    if(myMode==='shuffle'){
+      showShuffleTable(shuffleDraw(state.cards, want));
+      return;
+    }
+    /* —— 盲抽自选：摆 5 张牌背，等用户点；点了才交付 —— */
+    if(myMode==='blind'){
+      const hand=blindDeal(state.cards);
+      state.pending={ kind:'blind', rid:uid('round'), myText:text, pickedId:null,
+                      cards:hand.map(c=>({id:c.id, text:c.text})) };
+      save(); renderMessages();
+      return;
+    }
+    /* —— 预定对照：发消息时抽当轮，**不做动画** —— */
+    if(myMode==='control'){
+      deliverReply(controlDraw(state.cards, want), uid('round'));
+      return;
+    }
+    /* —— 预排队列：从"往后 N 轮已经排好的队列"里取一个，不做动画 —— */
+    if(myMode==='queue'){
+      deliverReply(controlNext(), uid('round'));
+      renderModeUI();      /* 队列少了一轮 → 按钮上的计数要跟着变 */
+      return;
+    }
+
+    /* —— 分半收拢（原路，一行没改）—— */
+    const round=createRound(state.cards, want);
+    /* 只保留最近一轮：旧的立刻清掉。聊天记录有 messages 存着不会丢；
+       轮次只是"回看上一轮"的录像，留一条就够。 */
+    for(const k of Object.keys(state.rounds)) delete state.rounds[k];
+    state.roundOrder=[];
+    state.rounds[round.id]=round;
+    state.roundOrder.push(round.id);
+    save();
+    openRound(round,'live');
   }, delay);
 }
 function autoGrow(){
@@ -2215,6 +3029,40 @@ function autoGrow(){
 }
 
 /* ---------------- 事件 ---------------- */
+/* 打分卡：用事件委托（卡片是 renderMessages 每次重建的，直接绑按钮会绑丢） */
+els.messages.addEventListener('click',e=>{
+  if(e.target.closest('#loadEarlier')){
+    state.msgWindow=Math.max(40,state.msgWindow|0)+MSG_STEP;
+    renderMessages();
+    return;
+  }
+  /* 盲抽：点一张牌 → 那张成为这一轮的回复，其余几张翻开留在牌桌上 */
+  const tc=e.target.closest('.tcard');
+  if(tc){ pickBlind(tc.dataset.card); return; }
+  const b=e.target.closest('[data-rate]');
+  if(!b) return;
+
+  const card=b.closest('.rate-card');
+  const cur=state.ratingFor;
+  if(!card||!cur||cur.rid!==card.dataset.rid) return;
+  rateRound(cur, Number(b.dataset.rate));
+});
+/* 「清空评分」在统计面板里，面板是重建的 → 同样走委托 */
+els.rateStats.addEventListener('click',e=>{ if(e.target.id==='rateClearBtn') clearRatings(); });
+/* 「看一眼队列」：只在预定对照 + 非实验模式下能看到 */
+if(els.queueToggle) els.queueToggle.addEventListener('click',()=>{
+  const b=els.queueBox; if(!b) return;
+  b.hidden=!b.hidden;
+  if(!b.hidden) renderQueueBox();
+});
+/* 抽卡方式切换 + 实验模式开关 */
+if(els.modeSwitch) els.modeSwitch.addEventListener('click',e=>{
+  if(e.target.closest('#expToggle')){ expOn()?exitExp():enterExp(); return; }
+  const b=e.target.closest('[data-slot]');
+  if(!b) return;
+  /* 实验模式下按钮上的编号是"槽位"，槽位→真实方式是洗过牌的固定映射 */
+  setDrawMode(expOn()?slotMethod(Number(b.dataset.slot)):b.dataset.mode);
+});
 $('#addCardForm').addEventListener('submit',e=>{
   e.preventDefault();
   const v=$('#newCardInput').value.trim();
@@ -2400,39 +3248,88 @@ window.addEventListener('resize',()=>{
 });
 
 /* ---------------- 启动 ---------------- */
-load();
-/* 客户字卡库直接内嵌在源码里（见 IMPORTED_LIBRARY），**首次打开就灌进去** ——
-   交付物应该是"客户打开就是一整库字卡"，而不是"客户先自己导一遍文件"。
-
-   ⚠️ 灌不灌、怎么灌，必须看老存档里已经有什么，否则会**覆盖客户自己的数据**：
-     · 空库            → 全量灌入
-     · 还是最初那 15 张示例语料（LEGACY_SEED）→ 全量替换掉。客户从没自定义过，
-                         留着那 15 条反而是假数据（"我不是从你给的库抽的"）。
-     · 已经有别的内容（自己加过 / 已经导过）→ **只补不覆盖**，缺的追加、去重。
-   seeded 标记保证只判一次：客户自己清空字卡库后重开，不会被塞回来。 */
-if(!state.seeded){
-  const has=state.cards.length>0;
-  const stillLegacy=has && state.cards.length===LEGACY_SEED.length
-    && LEGACY_SEED.every(t=>state.cards.some(c=>c.text===t));
-  if(!has || stillLegacy){
-    state.cards=IMPORTED_LIBRARY.map(t=>({id:uid(), text:t, used:0, lastUsedAt:0}));
-  }else{
-    const have=new Set(state.cards.map(c=>c.text));
-    IMPORTED_LIBRARY.forEach(t=>{ if(!have.has(t)) state.cards.push({id:uid(), text:t, used:0, lastUsedAt:0}); });
+/* 测试钩子。⚠️ 换了存储之后，探针**不能再直接 `localStorage.getItem` 读存档**了 ——
+   主存已经是 IndexedDB。统一走这三个：
+     __flush()      立刻落盘并 await（替代以前"等 600ms 让防抖落地"的写法）
+     __dump()       读回**存档里真实的内容**（等价于以前的 localStorage.getItem）
+     __seed(obj)    把存档整个换成 obj（等价于以前的 localStorage.setItem + reload）
+                    obj 传 null = 清空；第二参 {legacy:true} = 只写旧 localStorage（测迁移） */
+window.__flush=()=>flush();
+window.__dump=async()=>{ await flush(); const r=db?await idbGet():null; return r||lsGet(); };
+/* 同步快照：等价于以前"读 localStorage"的那批断言。⚠️ 它是"最后成功落盘的那一份"，
+   不是"现在真的在库里"—— 后者用 __dump()。 */
+window.__snapshot=()=>lastSaved;
+/* 抽法沙箱：给"每种方式都严格均匀"那类判据直接跑几万次（纯函数，不碰 UI） */
+window.__draw={ shuffleDraw, controlDraw, blindDeal, blindRound, halveSet, DRAW_MODES };
+/* 预定对照的沙箱：能直接看/换那条"未来队列"。
+   换成一个库里根本不存在的 id 也能出结果 ⇒ 证明这一轮**不是现场抽的**，是从队列里取的。 */
+window.__ctl={ refill:controlRefill, cards:QUEUE_CARDS, count:queueCards,
+  peek:()=>state.queue, set:q=>{ state.queue=q; save(); renderModeUI(); } };
+window.__mode=()=>state.drawMode;
+window.__store=()=>({ kind:storeKind, hasDB:!!db, degraded:storeDegraded });
+window.__store=()=>({ kind:storeKind, hasDB:!!db, degraded:storeDegraded });
+window.__seed=async(obj,opts)=>{
+  await flush();
+  if(db){
+    await new Promise(res=>{
+      try{
+        const tx=db.transaction(IDB_STORE,'readwrite');
+        tx.objectStore(IDB_STORE).delete(IDB_KEY);
+        tx.oncomplete=res; tx.onerror=res; tx.onabort=res;
+      }catch(e){ res(); }
+    });
   }
-  state.seeded=true;
-  save();
-}
+  try{
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORE_FLAG);
+  }catch(e){}
+  const legacy=!!(opts&&opts.legacy);
+  if(obj){
+    if(legacy){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(obj)); }catch(e){} }
+    else if(db){ await idbPut(obj); }
+    else { try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(obj)); }catch(e){} }
+  }
+  return true;
+};
+
+/* ⚠️ 这个必须留在**模块作用域**（不能塞进下面的 boot 函数里）：
+   速度滑杆的 input 处理在 boot 之外引用它，塞进去就变成 `speedLabel is not defined`。 */
 function speedLabel(v){ return v<=260?'很快':v<=520?'适中':v<=780?'偏慢':'很慢'; }
-$('#rngSpeed').value=settings.speed;
-normRange(); syncCountUI();
-$('#valSpeed').textContent=speedLabel(settings.speed);
-els.headSub.textContent='回复从 '+state.cards.length+' 张可见字卡中现场抽出';
-renderLibrary(); renderMessages(); renderHealth();
-/* ⚠️ 刷新后必须让「回看上一轮路径」可用：这个按钮的 enabled 状态原来只在 setInspector()
-   里被打开，而 setInspector 只在"演一轮 / 回放"时才会被调用 —— 于是刷新之后按钮永远是灰的，
-   存档里的历史路径根本点不进去，用户看着就像"历史全丢了"（既有缺陷，2026-10-05 一并修）。 */
-els.reopen.disabled=!state.roundOrder.length;
+
+/* ⚠️ 开机现在是**异步**的（存档在 IndexedDB 里）。顺序必须是：
+   await 读档 → 灌库三判据 → 首次渲染。早渲染一步就会先画一屏空聊天再跳一下。 */
+(async function boot(){
+  await load();
+  if(storeDegraded) libToast('这次没能打开浏览器数据库，读到的是旧的兜底存档（可能不是最新的）。');
+  /* 客户字卡库直接内嵌在源码里（见 IMPORTED_LIBRARY），**首次打开就灌进去** ——
+     交付物应该是"客户打开就是一整库字卡"，而不是"客户先自己导一遍文件"。
+
+     ⚠️ 灌不灌、怎么灌，必须看老存档里已经有什么，否则会**覆盖客户自己的数据**：
+       · 空库            → 全量灌入
+       · 还是最初那 15 张示例语料（LEGACY_SEED）→ 全量替换掉。客户从没自定义过，
+                           留着那 15 条反而是假数据（"我不是从你给的库抽的"）。
+       · 已经有别的内容（自己加过 / 已经导过）→ **只补不覆盖**，缺的追加、去重。
+     seeded 标记保证只判一次：客户自己清空字卡库后重开，不会被塞回来。 */
+  if(!state.seeded){
+    const has=state.cards.length>0;
+    const stillLegacy=has && state.cards.length===LEGACY_SEED.length
+      && LEGACY_SEED.every(t=>state.cards.some(c=>c.text===t));
+    if(!has || stillLegacy){
+      state.cards=IMPORTED_LIBRARY.map(t=>({id:uid(), text:t, used:0, lastUsedAt:0}));
+    }else{
+      const have=new Set(state.cards.map(c=>c.text));
+      IMPORTED_LIBRARY.forEach(t=>{ if(!have.has(t)) state.cards.push({id:uid(), text:t, used:0, lastUsedAt:0}); });
+    }
+    state.seeded=true;
+    save();
+  }
+  $('#rngSpeed').value=settings.speed;
+  normRange(); syncCountUI();
+  $('#valSpeed').textContent=speedLabel(settings.speed);
+  els.headSub.textContent='回复从 '+state.cards.length+' 张可见字卡中现场抽出';
+  restoreRatingPrompt();   /* 评分：把最近一轮的打分卡补回来（必须在 renderMessages 之前） */
+  renderLibrary(); renderMessages(); renderHealth(); renderRatingStats(); renderModeUI();
+})();
 })();
 </script>
 </body>
